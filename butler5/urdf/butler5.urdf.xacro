@@ -1,0 +1,506 @@
+<robot
+	name="butler5" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+	<!-- Included URDF/XACRO Files -->
+	<xacro:include filename="$(find butler5)/urdf/materials.urdf.xacro" />
+	<xacro:include filename="$(find butler5)/urdf/wheel.urdf.xacro" />
+	<xacro:include filename="$(find butler5)/urdf/swivel_wheel.urdf.xacro" />
+	<xacro:include filename="$(find butler5)/urdf/sensorpos.urdf.xacro" />
+
+	<property name="M_PI" value="3.1415926535897931" />
+
+	<property name="base_x_size" value="0.072" />
+	<property name="base_y_size" value="0.055" />
+	<property name="base_z_size" value="0.023" />
+	<property name="base_mass" value="15" /> <!-- in kg-->
+	<property name="base_z_origin_to_wheel_origin" value="-0.07" />
+	<!-- Used for fixing robot to Gazebo 'base_link' -->
+	<!--<link name="odom_gazebo" />-->
+	<!--Inertial macros for the box and cylinder. Units are kg*m^2-->
+	<macro name="box_inertia" params="m x y z">
+		<inertia  ixx="${m*(y*y+z*z)/12}" ixy = "0" ixz = "0"
+			iyy="${m*(x*x+z*z)/12}" iyz = "0"
+			izz="${m*(x*x+z*z)/12}" />
+		</macro>
+
+		<link name="base_link">
+			<inertial>
+				<origin xyz="0.17 0.0022486 -0.08" rpy="${M_PI/2} 0 0" />
+				<mass value="${base_mass}" />
+				<box_inertia  m="${base_mass}" x="${base_x_size}" y="${base_y_size}" z="${base_z_size}"/>
+			</inertial>
+			<visual>
+				<origin xyz="0.17 0.0022486 -0.08" rpy="${M_PI/2} 0 0" />
+				<geometry>
+					<mesh filename="package://butler5/meshes/base_link.STL" />
+				</geometry>
+				<material name="">
+					<color rgba="1 1 1 1" />
+				</material>
+			</visual>
+			<collision>
+				<origin xyz="0.17 0.0022486 -0.08" rpy="${M_PI/2} 0 0" />
+				<geometry>
+					<mesh filename="package://butler5/meshes/base_link.STL" />
+				</geometry>
+			</collision>
+		</link>
+
+		<gazebo reference="base_link">
+			<material>Gazebo/Green</material>
+			<turnGravityOff>false</turnGravityOff>
+		</gazebo>
+
+
+		<link name="dummy_base">
+    <!--  <inertial>
+      <origin xyz="-0.0034061 -1.2124E-10 -0.048553" rpy="0 0 0" />
+        <mass value="0.031399" />
+        <box_inertia  m="${base_mass}" x="${base_x_size}" y="${base_y_size}" z="${base_z_size}"/>
+      <inertia
+        ixx="0.0013028"
+        ixy="0"
+        ixz="-1.26E-06"
+        iyy="0.001174"
+        iyz="0"
+        izz="0.0020233" />
+    </inertial> -->
+    <visual>
+    	<origin xyz="0 0 0" rpy="0 0 0" />
+    	<geometry>
+    		<box size="0.1 0.1 0.1"/>
+    	</geometry>
+    	<material name="">
+    		<color rgba="0.75294 0.75294 0.75294 1" />
+    	</material>
+    </visual>
+    <!-- <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://butler5/meshes/tower.STL" />
+      </geometry>
+  </collision>-->
+</link>
+
+<gazebo reference="dummy_base">
+	<turnGravityOff>false</turnGravityOff>
+</gazebo>
+
+<joint name="dummy_base_joint" type="fixed">
+	<origin xyz="0.34 0 0.08" rpy="0 0 0" />
+	<parent link="base_link" />
+	<child link="dummy_base" />
+</joint>
+
+<link name="dummy_cam">
+    <!--  <inertial>
+      <origin xyz="-0.0034061 -1.2124E-10 -0.048553" rpy="0 0 0" />
+        <mass value="0.031399" />
+        <box_inertia  m="${base_mass}" x="${base_x_size}" y="${base_y_size}" z="${base_z_size}"/>
+      <inertia
+        ixx="0.0013028"
+        ixy="0"
+        ixz="-1.26E-06"
+        iyy="0.001174"
+        iyz="0"
+        izz="0.0020233" />
+    </inertial> -->
+    <visual>
+    	<origin xyz="0 0 0" rpy="0 0 0" />
+    	<geometry>
+    		<box size="0.05 0.1 0.05"/>
+    	</geometry>
+    	<material name="">
+    		<color rgba="0.75294 0.75294 0.75294 1" />
+    	</material>
+    </visual>
+    <!-- <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://butler5/meshes/tower.STL" />
+      </geometry>
+  </collision>-->
+</link>
+
+<gazebo reference="dummy_cam">
+	<turnGravityOff>false</turnGravityOff>
+</gazebo>
+
+<joint name="dummy_cam_joint" type="fixed">
+	<origin xyz="0.4 0 1" rpy="0 0.4 0" />
+	<parent link="base_link" />
+	<child link="dummy_cam" />
+</joint>
+
+<link name="tower">
+	<inertial>
+		<origin xyz="-0.0034061 -1.2124E-10 -0.048553" rpy="0 0 0" />
+		<mass value="0.031399" />
+		<box_inertia  m="${base_mass}" x="${base_x_size}" y="${base_y_size}" z="${base_z_size}"/>
+      <!-- <inertia
+        ixx="0.0013028"
+        ixy="0"
+        ixz="-1.26E-06"
+        iyy="0.001174"
+        iyz="0"
+        izz="0.0020233" /> -->
+    </inertial>
+    <visual>
+    	<origin xyz="0 0 -0.08" rpy="0 0 0" />
+    	<geometry>
+    		<mesh filename="package://butler5/meshes/tower.STL" />
+    	</geometry>
+    	<material name="">
+    		<color rgba="0.75294 0.75294 0.75294 1" />
+    	</material>
+    </visual>
+    <!-- <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://butler5/meshes/tower.STL" />
+      </geometry>
+  </collision>-->
+</link>
+
+<gazebo reference="tower">
+	<turnGravityOff>false</turnGravityOff>
+</gazebo>
+
+<joint name="tower_joint" type="revolute">
+	<origin xyz="0.34 0 0.55878" rpy="0 0 0" />
+	<parent link="base_link" />
+	<child link="tower" />
+    <axis xyz="0 0 1" /><!-- 
+    <limit lower="-1.57079632679" upper="1.57079632679" effort="0.5" velocity="0.78539816339" /> -->
+    <limit lower="-1.57079632679" upper="1.57079632679" effort="0.5" velocity="2.26"/>
+</joint>
+
+<link name="arm_base">
+	<inertial>
+		<origin xyz="-0.0040016 4.112E-08 -0.00090622" rpy="0 0 0" />
+		<mass value="0.0031399" />
+		<box_inertia  m="${base_mass}" x="${base_x_size}" y="${base_y_size}" z="${base_z_size}"/>
+      <!-- <inertia
+        ixx="0.00018906"
+        ixy="0"
+        ixz="0"
+        iyy="0.005442"
+        iyz="0"
+        izz="0.0055646" /> -->
+    </inertial>
+    <visual>
+    	<origin xyz="-0.0040016 4.112E-08 -0.00090622" rpy="0 0 0" />
+    	<geometry>
+    		<mesh filename="package://butler5/meshes/arm_base.STL" />
+    	</geometry>
+    	<material name="">
+    		<color rgba="0.75294 0.75294 0.75294 1" />
+    	</material>
+    </visual>
+   <!-- <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://butler5/meshes/arm_base.STL" />
+      </geometry>
+  </collision>-->
+</link>
+
+<gazebo reference="arm_base">
+	<turnGravityOff>false</turnGravityOff>
+</gazebo>
+
+<joint name="arm_base_joint" type="prismatic">
+	<origin xyz="0 0 0.0081114" rpy="0 0 0" />
+	<parent link="tower" />
+	<child link="arm_base" />
+	<axis xyz="0 0 1" />
+	<!-- <limit
+		lower="-0.18"
+		upper="0.32"
+		effort="10"
+		velocity="0.1" /> -->
+		<!-- <limit
+		lower="-0.18"
+		upper="0.32"
+		effort="10"
+		velocity="0.1" /> -->
+		<limit
+		lower="-0.18"
+		upper="0.32"
+		effort="10"
+		velocity="0.72" />
+	</joint>
+
+	<link name="arm_first">
+		<inertial>
+			<origin xyz="0.14167 5.1317E-07 6.6613E-16" rpy="0 0 0" />
+			<mass value="0.0033757" />
+			<box_inertia  m="${base_mass}" x="${base_x_size}" y="${base_y_size}" z="${base_z_size}"/>
+     <!--  <inertia
+        ixx="0.00018906"
+        ixy="0"
+        ixz="0"
+        iyy="0.005442"
+        iyz="0"
+        izz="0.0055646" /> -->
+    </inertial>
+    <visual>
+    	<origin xyz="0 0 0" rpy="0 0 0" />
+    	<geometry>
+    		<mesh filename="package://butler5/meshes/arm_first.STL" />
+    	</geometry>
+    	<material name="">
+    		<color rgba="0.75294 0.75294 0.75294 1" />
+    	</material>
+    </visual>
+    <!--<collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://butler5/meshes/arm_first.STL" />
+      </geometry>
+  </collision>-->
+</link>
+
+<gazebo reference="arm_first">
+	<turnGravityOff>false</turnGravityOff>
+</gazebo>
+
+<joint name="arm_first_joint" type="revolute">
+	<origin xyz="0.0501 0 0" rpy="0 0 0" />
+	<parent link="arm_base" />
+	<child link="arm_first" />
+	<axis xyz="0 1 0" />
+    <!-- <limit
+      lower="-1.5708"
+      upper="1.5708"
+      effort="5"
+      velocity="0.7854" />
+  </joint> -->
+  <limit
+  	lower="-1.5708"
+  	upper="1.5708"
+  	effort="5"
+  	velocity="2.63" />
+  </joint>
+
+  <link name="arm_second">
+  	<inertial>
+  		<origin xyz="0.12303 3.7194E-08 -0.00089767" rpy="0 0 0" />
+  		<mass value="0.0035067" />
+  		<box_inertia  m="${base_mass}" x="${base_x_size}" y="${base_y_size}" z="${base_z_size}"/>
+      <!-- <inertia
+        ixx="0.00038172"
+        ixy="0"
+        ixz="-6.57E-06"
+        iyy="0.0028934"
+        iyz="-2E-08"
+        izz="0.0031072" /> -->
+    </inertial>
+    <visual>
+    	<origin xyz="0 0 0" rpy="0 0 0" />
+    	<geometry>
+    		<mesh filename="package://butler5/meshes/arm_second.STL" />
+    	</geometry>
+    	<material name="">
+    		<color rgba="0.75294 0.75294 0.75294 1" />
+    	</material>
+    </visual>
+    <!--<collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://butler5/meshes/arm_second.STL" />
+      </geometry>
+  </collision>-->
+</link>
+
+<gazebo reference="arm_second">
+	<turnGravityOff>false</turnGravityOff>
+</gazebo>
+
+<joint name="arm_second_joint" type="revolute">
+	<origin xyz="0.3 0 0" rpy="0 0 0" />
+	<parent link="arm_first" />
+	<child link="arm_second" />
+	<axis xyz="0 1 0" />
+	<!-- <limit
+		lower="-1.57079632679"
+		upper="1.57079632679"
+		effort="3"
+		velocity="0.78539816339" /> -->
+		<limit
+		lower="-1.57079632679"
+		upper="1.57079632679"
+		effort="3"
+		velocity="2.26" />
+	</joint>
+
+	<link name="hand">
+		<inertial>
+			<origin xyz="0.1 0 0" rpy="0 0 0" />
+			<mass value="0.0035067" />
+			<box_inertia  m="${base_mass}" x="${base_x_size}" y="${base_y_size}" z="${base_z_size}"/>
+    <!--   <inertia
+        ixx="0.00038172"
+        ixy="0"
+        ixz="-6.57E-06"
+        iyy="0.0028934"
+        iyz="-2E-08"
+        izz="0.0031072" /> -->
+    </inertial>
+    <visual>
+    	<origin xyz="0.1 0 0" rpy="0 0 0" />
+    	<geometry>
+    		<box size="0.075 0.075 0.05" />
+    	</geometry>
+    	<material name="">
+    		<color rgba="0.75294 0.75294 0.75294 1" />
+    	</material>
+    </visual>
+    <collision>
+    	<origin xyz="0.1 0 0" rpy="0 0 0" />
+    	<geometry>
+    		<box size="0.075 0.075 0.05" />
+    	</geometry>
+    </collision>
+</link>
+
+<joint name="hand_joint" type="revolute">
+	<origin xyz="0.175 0 0" rpy="0 0 0" />
+	<parent link="arm_second" />
+	<child link="hand" />
+	<axis xyz="1 0 0" />
+	<limit
+		lower="-1.57079632679"
+		upper="1.57079632679"
+		effort="3"
+		velocity="0.78539816339" />
+	</joint>
+
+	<gazebo reference="hand">
+		<turnGravityOff>false</turnGravityOff>
+	</gazebo>
+
+	<transmission name="tower_joint_trans">
+		<type>transmission_interface/SimpleTransmission</type>
+		<actuator name="$tower_joint_motor">
+			<mechanicalReduction>1</mechanicalReduction>
+		</actuator>
+		<joint name="tower_joint">
+			<hardwareInterface>PositionJointInterface</hardwareInterface>
+		</joint>
+	</transmission>
+	<transmission name="arm_base_joint_trans">
+		<type>transmission_interface/SimpleTransmission</type>
+		<actuator name="$arm_base_joint_motor">
+			<mechanicalReduction>1</mechanicalReduction>
+		</actuator>
+		<joint name="arm_base_joint">
+			<hardwareInterface>PositionJointInterface</hardwareInterface>
+		</joint>
+	</transmission>
+	<transmission name="arm_first_joint_trans">
+		<type>transmission_interface/SimpleTransmission</type>
+		<actuator name="$arm_first_joint_motor">
+			<mechanicalReduction>1</mechanicalReduction>
+		</actuator>
+		<joint name="arm_first_joint">
+			<hardwareInterface>PositionJointInterface</hardwareInterface>
+		</joint>
+	</transmission>
+	<transmission name="arm_second_joint_trans">
+		<type>transmission_interface/SimpleTransmission</type>
+		<actuator name="$arm_second_joint_motor">
+			<mechanicalReduction>1</mechanicalReduction>
+		</actuator>
+		<joint name="arm_second_joint">
+			<hardwareInterface>PositionJointInterface</hardwareInterface>
+		</joint>
+	</transmission>
+	<transmission name="hand_joint_trans">
+		<type>transmission_interface/SimpleTransmission</type>
+		<actuator name="$hand_joint_motor">
+			<mechanicalReduction>1</mechanicalReduction>
+		</actuator>
+		<joint name="hand_joint">
+			<hardwareInterface>PositionJointInterface</hardwareInterface>
+		</joint>
+	</transmission>
+	<!-- WHEELs -->
+	<wheel fb="back" lr="right" parent="base_link" translateY="-0.24" translateX="0.0" translateZ="0.0" wheel_radius="0.1225" wheel_height="0.032" flip="1"/>
+	<wheel fb="back" lr="left" parent="base_link" translateY="0.24" translateX="0.0" translateZ="0.0" wheel_radius="0.1225" wheel_height="0.032" flip="1"/>
+
+	<swivel_wheel fb="front" lr="right" parent="base_link" translateY="-0.16" translateX="0.355" translateZ="0.03" wheel_radius="0.05" wheel_height="0.05" flip="0"/>
+	<swivel_wheel fb="front" lr="left" parent="base_link" translateY="0.16" translateX="0.355" translateZ="0.03" wheel_radius="0.05" wheel_height="0.05" flip="0"/>
+
+	<!-- GAZEBO STUFF -->
+	<gazebo>
+		<plugin name="automower_gazebo_controller" filename="libam_gazebo_controller_2wd.so">
+			<alwaysOn>true</alwaysOn>
+			<updateRate>100.0</updateRate>
+			<leftJoint>back_right_wheel_joint</leftJoint>
+			<rightJoint>back_left_wheel_joint</rightJoint>
+			<wheelSeparation>0.4645</wheelSeparation>
+			<wheelDiameter>0.245</wheelDiameter>
+			<wheelTorque>100</wheelTorque>
+			<commandTopic>cmd_vel</commandTopic>
+			<odometryTopic>odom</odometryTopic>
+			<odometryFrame>odom_gazebo</odometryFrame>
+			<robotBaseFrame>base_link</robotBaseFrame>
+			<publishWheelTF>false</publishWheelTF>
+			<publishWheelJointState>false</publishWheelJointState>
+		</plugin>
+
+		<plugin name="gazebo_ros_control" filename="libgazebo_ros_control.so" />
+
+		<plugin name="imu_plugin" filename="libhector_gazebo_ros_imu.so">
+			<alwaysOn>true</alwaysOn>
+			<bodyName>base_link</bodyName>
+			<topicName>imu</topicName>
+			<serviceName>imu_service</serviceName>
+			<updateRate>100.0</updateRate>
+			<rpyOffsets>0 0 0</rpyOffsets>
+
+			<gaussianNoise>0.0</gaussianNoise>
+			<accelDrift>0.0 0.0 0.0</accelDrift>
+			<accelGaussianNoise>0.0 0.0 0.0</accelGaussianNoise>
+			<rateDrift>0.0 0.0 0.0</rateDrift>
+			<rateGaussianNoise>0.0 0.0 0.0</rateGaussianNoise>
+			<headingDrift>0.0</headingDrift>
+			<headingGaussianNoise>0.00</headingGaussianNoise>
+		</plugin>
+
+		<plugin name="am_gazebo_wheelencoder" filename="libam_gazebo_wheelencoder.so">
+		</plugin>
+
+		<plugin name="automower_gps_sim" filename="libhector_gazebo_ros_gps.so">
+			<alwaysOn>true</alwaysOn>
+			<updateRate>4.0</updateRate>
+			<bodyName>base_link</bodyName>
+			<topicName>fix</topicName>
+			<velocityTopicName>fix_vel</velocityTopicName>
+			<drift>5.0 5.0 5.0</drift>
+			<gaussianNoise>0.1 0.1 0.1</gaussianNoise>
+			<velocityDrift>0 0 0</velocityDrift>
+			<velocityGaussianNoise>0.1 0.1 0.1</velocityGaussianNoise>
+		</plugin>
+	</gazebo>
+
+	<gazebo reference="base_link">
+		<sensor name="automower_sensor" type="contact">
+			<always_on>true</always_on>
+			<update_rate>50</update_rate>
+			<contact>
+				<collision>base_link_collision</collision>
+			</contact>
+			<plugin name="automower_sensors_plugin" filename="libam_gazebo_sensors.so">
+				<always_on>true</always_on>
+				<update_rate>20</update_rate>
+				<bumperTopicName>sensor_status</bumperTopicName>
+				<loopTopicName>loop</loopTopicName>
+				<!-- 0x01 = FC, 0x02 = FR, 0x04 = RL, 0x08 = RR -->
+				<loopOutsideSensors>15</loopOutsideSensors>
+			</plugin>
+		</sensor>
+	</gazebo>
+
+</robot>

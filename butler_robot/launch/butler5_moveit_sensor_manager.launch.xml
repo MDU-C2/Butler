@@ -1,0 +1,3 @@
+<launch>
+	<rosparam command="load" file="$(find butler_robot)/config/sensors.yaml" />
+</launch>

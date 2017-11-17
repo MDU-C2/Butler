@@ -1,0 +1,11 @@
+controller_list:
+  - name: fake_arm_controller
+    joints:
+      - tower_joint
+      - arm_base_joint
+      - arm_first_joint
+      - arm_second_joint
+      - hand_joint
+  - name: fake_eef_controller
+    joints:
+      - hand_joint

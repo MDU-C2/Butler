@@ -1,0 +1,6 @@
+<robot file="butler_51.dae">
+  <Manipulator name="butler5">
+    <base>base_link</base>
+    <effector>hand</effector>
+  </Manipulator>
+</robot>

@@ -1,0 +1,7 @@
+wheel_controller:
+    type: "diff_drive_controller/DiffDriveController"
+    joints:
+      - back_right_wheel_joint
+      - back_left_wheel_joint
+      - sw_arm_left_connect_1
+      - sw_arm_right_connect_1

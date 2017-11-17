@@ -1,0 +1,17 @@
+digraph G {
+node [shape=box];
+"base_link" [label="base_link"];
+"tower" [label="tower"];
+"arm_base" [label="arm_base"];
+"arm_first" [label="arm_first"];
+"arm_second" [label="arm_second"];
+node [shape=ellipse, color=blue, fontcolor=blue];
+"base_link" -> "tower_joint" [label="xyz: 0.16309 0 0.55878 \nrpy: 0 -0 0"]
+"tower_joint" -> "tower"
+"tower" -> "arm_base_joint" [label="xyz: 0 0 0.0081114 \nrpy: 0 -0 0"]
+"arm_base_joint" -> "arm_base"
+"arm_base" -> "arm_first_joint" [label="xyz: 0.0501 0 0 \nrpy: 0 -0 0"]
+"arm_first_joint" -> "arm_first"
+"arm_first" -> "arm_second_joint" [label="xyz: 0.3 0 0 \nrpy: 0 -0 0"]
+"arm_second_joint" -> "arm_second"
+}

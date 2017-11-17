@@ -1,0 +1,4 @@
+hand_controller:
+    type: "position_controllers/JointTrajectoryController"
+    joints:
+      - hand_joint
