@@ -1,0 +1,12 @@
+*.swp
+*.o
+*.weights
+*.backup
+*.jpg
+*.JPEG
+*.png
+images/
+labels/
+train.txt
+darknet
+tags
