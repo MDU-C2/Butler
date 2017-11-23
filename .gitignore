@@ -8,5 +8,5 @@
 images/
 labels/
 train.txt
-darknet
+^darknet$
 tags
