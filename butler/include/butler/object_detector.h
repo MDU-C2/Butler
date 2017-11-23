@@ -5,6 +5,11 @@
 #include <darknet_ros_msgs/BoundingBoxes.h>
 #include <darknet_ros_msgs/CheckForObjectsAction.h>
 #include <sensor_msgs/Image.h>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <image_transport/image_transport.h>
+#include <sensor_msgs/image_encodings.h>
+#include <cv_bridge/cv_bridge.h>
 
 #include <actionlib/client/simple_action_client.h>
 #include <actionlib/client/terminal_state.h>
@@ -22,6 +27,8 @@ class ObjectDetector {
 		void publishCup();
 		void depthCallback(const sensor_msgs::Image& img);
 		void rgbCallback(const sensor_msgs::Image& img);
+		void showDepth();
+		void showRGB();
 
 	private:
 		ros::NodeHandle n_;
@@ -34,6 +41,7 @@ class ObjectDetector {
 		actionlib::SimpleActionClient<darknet_ros_msgs::CheckForObjectsAction> ObjDClient_;
 
 		sensor_msgs::Image rgbImg_, depthImg_;
+
 
 };
 
