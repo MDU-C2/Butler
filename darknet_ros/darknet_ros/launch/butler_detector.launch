@@ -9,7 +9,7 @@
 	<arg name="yolo_config_path"           default="$(find darknet_ros)/yolo_network_config/cfg"/>
 
 	<!-- Load parameters -->
-	<rosparam command="load" ns="darknet_ros" file="$(find darknet_ros)/config/ros.yaml"/>
+	<rosparam command="load" ns="darknet_ros" file="$(find darknet_ros)/config/butler.yaml"/>
 	<rosparam command="load" ns="darknet_ros" file="$(find darknet_ros)/config/yolo_voc.yaml"/>
 
 	<!-- Start darknet and ros wrapper -->

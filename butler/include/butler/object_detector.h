@@ -16,24 +16,23 @@
 #include <boost/thread.hpp>
 
 
-extern const std::string DEPTH_TOPIC_;
-extern const std::string RGB_TOPIC_;
 
 class ObjectDetector {
 	public:
-		ObjectDetector(const std::string& clientname_);
+		ObjectDetector(const std::string&);
 		~ObjectDetector();
 
 		void publishCup();
-		void depthCallback(const sensor_msgs::Image& img);
-		void rgbCallback(const sensor_msgs::Image& img);
+		void depthCallback(const sensor_msgs::Image&);
+		void rgbCallback(const sensor_msgs::Image&);
 		void showDepth();
 		void showRGB();
+		void publishRGB();
 
 	private:
 		ros::NodeHandle n_;
 		ros::Subscriber depthS_, rgbS_;
-		ros::Publisher cupPublisher_;
+		ros::Publisher cupPublisher_, rgbPub_, depthPub_;
 
 		darknet_ros_msgs::CheckForObjectsGoal goal_;
 		darknet_ros_msgs::CheckForObjectsResult result_;

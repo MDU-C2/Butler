@@ -217,3 +217,5 @@ add_executable(point_cloud src/point_cloud.cpp)
 target_link_libraries(point_cloud
   ${catkin_LIBRARIES}
   )
+add_dependencies(butler_ik2 calc_ik_generate_messages_cpp)
+add_dependencies(point_cloud calc_ik_generate_messages_cpp)

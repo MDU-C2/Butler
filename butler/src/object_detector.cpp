@@ -1,44 +1,54 @@
 #include <butler/object_detector.h>
 
-const std::string DEPTH_TOPIC_ = "/camera/depth_registered/image_raw";
-const std::string RGB_TOPIC_ = "/usb_cam/image_raw";
+static const std::string DEPTH_TOPIC_ = "/camera/depth_registered/image_raw";
+static const std::string RGB_TOPIC_ = "/usb_cam/image_raw";
+static const std::string RGB_PUB_ = "/detector/rgb";
+static const std::string DEPTH_PUB_ = "/detector/depth";
+static const std::string GOAL_PUB_ = "/darknet_ros/check_for_objects/goal";
 
 int main(int argc, char** argv)
 {
 	ros::init(argc, argv, "objectdetector");
 	ros::Time::init();
-	ros::Rate r(100.0);
+	ros::Rate r(0.05);
+//	ros::Rate r(15.0);
 
-	ObjectDetector detector("CheckForObjects");
-
-//	detector.publishCup();
+	ObjectDetector detector(GOAL_PUB_);
 
 	while(ros::ok()) {
-		detector.showRGB();
-		ros::spinOnce();
 		r.sleep();
+		ros::spinOnce();
+		detector.publishRGB();
 	}
 	return 0;
 }
 
-
-ObjectDetector::ObjectDetector(const std::string& clientname_) : ObjDClient_(clientname_, 1) {
+ObjectDetector::ObjectDetector(const std::string& clientname) : ObjDClient_(clientname, true) {
 	depthS_ = n_.subscribe(DEPTH_TOPIC_, 0, &ObjectDetector::depthCallback, this);
 	rgbS_ = n_.subscribe(RGB_TOPIC_, 0, &ObjectDetector::rgbCallback, this);
+//	rgbPub_ = n_.advertise<darknet_ros_msgs::CheckForObjectsGoal>(GOAL_PUB_, 0);
 //	cupPublisher_ = n_.advertise<darknet_ros_msgs::BoundingBoxes>("/CupBB", 0);
 
-//	ROS_INFO("waiting for action server to start");
-//	ObjDClient_.waitForServer();
-//	ROS_INFO("action server started");
-
-	goal_.id = 0;
+	ROS_INFO("waiting for action server to start");
+	ObjDClient_.waitForServer();
 }
 
 ObjectDetector::~ObjectDetector() {}
 
 // new msg type? x,y,z probably
-// publish local coordinates for cup
+// publish local coordinates for cup???
 void ObjectDetector::publishCup() {
+	return;
+}
+
+void ObjectDetector::publishRGB() {
+	std::cout << "bbbb" << std::endl;
+	goal_.id = 0;
+	goal_.image = rgbImg_;
+	std::cout << "bale" << std::endl;
+	rgbPub_.publish(goal_);
+
+	ROS_INFO("Published GOAL");
 	return;
 }
 

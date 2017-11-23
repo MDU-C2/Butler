@@ -56,6 +56,7 @@ find_package(catkin REQUIRED
     actionlib
     darknet_ros_msgs
     image_transport
+	message_generation
 )
 
 # Enable OPENCV in darknet
@@ -75,6 +76,7 @@ catkin_package(
     std_msgs
     darknet_ros_msgs
     image_transport
+	message_generation
   DEPENDS
     Boost
 )
@@ -203,6 +205,8 @@ else()
     ${Boost_LIBRARIES}
     ${catkin_LIBRARIES}
   )
+
+  add_dependencies(${PROJECT_NAME}_lib darknet_ros_msgs_generate_messages_cpp)
 
   add_executable(${PROJECT_NAME}
     src/yolo_object_detector_node.cpp
