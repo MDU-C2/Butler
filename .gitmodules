@@ -1,3 +1,7 @@
+[submodule "darknet"]
+	path = darknet_ros/darknet
+	url = https://github.com/pjreddie/darknet
+
 [submodule "ros_astra_camera"]
 	path = ros_astra_camera
 	url = https://github.com/orbbec/ros_astra_camera
