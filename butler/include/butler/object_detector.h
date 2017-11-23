@@ -27,7 +27,7 @@ class ObjectDetector {
 		void rgbCallback(const sensor_msgs::Image&);
 		void showDepth();
 		void showRGB();
-		void publishRGB();
+		void sendGoal(const int);
 
 	private:
 		ros::NodeHandle n_;

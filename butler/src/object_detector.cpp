@@ -4,21 +4,27 @@ static const std::string DEPTH_TOPIC_ = "/camera/depth_registered/image_raw";
 static const std::string RGB_TOPIC_ = "/usb_cam/image_raw";
 static const std::string RGB_PUB_ = "/detector/rgb";
 static const std::string DEPTH_PUB_ = "/detector/depth";
-static const std::string GOAL_PUB_ = "/darknet_ros/check_for_objects/goal";
+static const std::string GOAL_PUB_ = "/darknet_ros/check_for_objects";
+
+
+/* 
+ * TODO
+ * get action results
+ * the rest
+ */
 
 int main(int argc, char** argv)
 {
 	ros::init(argc, argv, "objectdetector");
 	ros::Time::init();
 	ros::Rate r(0.05);
-//	ros::Rate r(15.0);
 
 	ObjectDetector detector(GOAL_PUB_);
 
 	while(ros::ok()) {
 		r.sleep();
 		ros::spinOnce();
-		detector.publishRGB();
+		detector.sendGoal(0);
 	}
 	return 0;
 }
@@ -26,8 +32,6 @@ int main(int argc, char** argv)
 ObjectDetector::ObjectDetector(const std::string& clientname) : ObjDClient_(clientname, true) {
 	depthS_ = n_.subscribe(DEPTH_TOPIC_, 0, &ObjectDetector::depthCallback, this);
 	rgbS_ = n_.subscribe(RGB_TOPIC_, 0, &ObjectDetector::rgbCallback, this);
-//	rgbPub_ = n_.advertise<darknet_ros_msgs::CheckForObjectsGoal>(GOAL_PUB_, 0);
-//	cupPublisher_ = n_.advertise<darknet_ros_msgs::BoundingBoxes>("/CupBB", 0);
 
 	ROS_INFO("waiting for action server to start");
 	ObjDClient_.waitForServer();
@@ -41,14 +45,11 @@ void ObjectDetector::publishCup() {
 	return;
 }
 
-void ObjectDetector::publishRGB() {
-	std::cout << "bbbb" << std::endl;
-	goal_.id = 0;
+void ObjectDetector::sendGoal(const int id) {
+	goal_.id = id;
 	goal_.image = rgbImg_;
-	std::cout << "bale" << std::endl;
-	rgbPub_.publish(goal_);
-
-	ROS_INFO("Published GOAL");
+	ObjDClient_.sendGoal(goal_);
+	ROS_INFO("sent goal");
 	return;
 }
 
