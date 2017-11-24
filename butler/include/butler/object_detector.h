@@ -15,15 +15,16 @@
 #include <actionlib/client/terminal_state.h>
 
 
-extern const std::string DEPTH_TOPIC_;
-extern const std::string RGB_TOPIC_;
-extern const std::string RGB_PUB_;
-extern const std::string DEPTH_PUB_;
-extern const std::string GOAL_PUB_; 
+extern const std::string Depth_Topic_;
+extern const std::string RGB_Topic_;
+extern const std::string RGB_Publisher_;
+extern const std::string Depth_Publisher_;
+extern const std::string Action_Server_; 
 
 typedef actionlib::SimpleActionClient<darknet_ros_msgs::CheckForObjectsAction> Client_T_;
 
-class ObjectDetector {
+class ObjectDetector 
+{
 	private:
 		ros::NodeHandle n_;
 		ros::Subscriber depthS_, rgbS_;
@@ -35,40 +36,50 @@ class ObjectDetector {
 		Client_T_ Client_;
 
 		sensor_msgs::Image rgbImg_, depthImg_;
+		cv_bridge::CvImagePtr oldDepth_;
 
 	public:
-		ObjectDetector(const std::string& clientname) : Client_(clientname, true) {
-			depthS_ = n_.subscribe(DEPTH_TOPIC_, 0, &ObjectDetector::depthCallback, this);
-			rgbS_ = n_.subscribe(RGB_TOPIC_, 0, &ObjectDetector::rgbCallback, this);
+		ObjectDetector(const std::string& clientname) 
+			: Client_(clientname, true) 
+		{
+			depthS_ = n_.subscribe(Depth_Topic_, 0, &ObjectDetector::depthCallback, this);
+			rgbS_ = n_.subscribe(RGB_Topic_, 0, &ObjectDetector::rgbCallback, this);
 
 			ROS_INFO("waiting for action server to start");
 			Client_.waitForServer();
 		}
 
-		~ObjectDetector() {
+		~ObjectDetector() 
+		{
 		}
 
-		void publishCup() {
+		void publishCup() 
+		{
 			return;
 		}
 
-		void depthCallback(const sensor_msgs::Image& img) {
+		void depthCallback(const sensor_msgs::Image& img) 
+		{
 			depthImg_ = img;
 			return;
 
 		}
 
-		void rgbCallback(const sensor_msgs::Image& img) {
+		void rgbCallback(const sensor_msgs::Image& img) 
+		{
 			rgbImg_ = img;
 			return;
 		}
 
-		void showDepth(){
+		void showDepth()
+		{
 			cv_bridge::CvImagePtr dimg;
-			try {
+			try 
+			{
 				dimg = cv_bridge::toCvCopy(depthImg_, sensor_msgs::image_encodings::TYPE_32FC1);
 			} 
-			catch (cv_bridge::Exception& e) {
+			catch (cv_bridge::Exception& e) 
+			{
 				ROS_ERROR("cv_bridge error: %s", e.what());
 				return;
 			}
@@ -77,12 +88,15 @@ class ObjectDetector {
 			return;
 		}
 
-		void showRGB(){
+		void showRGB()
+		{
 			cv_bridge::CvImagePtr cimg;
-			try {
+			try 
+			{
 				cimg = cv_bridge::toCvCopy(rgbImg_, sensor_msgs::image_encodings::RGB8);
 			}
-			catch (cv_bridge::Exception& e) {
+			catch (cv_bridge::Exception& e) 
+			{
 				ROS_ERROR("cv_bridge error: %s", e.what());
 				return;
 			}
@@ -91,8 +105,21 @@ class ObjectDetector {
 			return;
 		}
 
-		void sendGoal(const int id) {goal_.id = id;
+		void sendGoal(const int id) 
+		{
+			goal_.id = id;
 			goal_.image = rgbImg_;
+
+			try
+			{
+				oldDepth_ = cv_bridge::toCvCopy(depthImg_, sensor_msgs::image_encodings::TYPE_32FC1);
+			}
+			catch (cv_bridge::Exception& e)
+			{
+				ROS_ERROR("cv_bridge error: %s", e.what());
+				return;
+			}
+
 			Client_.sendGoal(goal_,
 					boost::bind(&ObjectDetector::detectorCallback, this, _1, _2),
 					Client_T_::SimpleActiveCallback(),
@@ -103,11 +130,19 @@ class ObjectDetector {
 		}
 
 		void detectorCallback(const actionlib::SimpleClientGoalState& state,
-				const darknet_ros_msgs::CheckForObjectsResultConstPtr& result) {
+				const darknet_ros_msgs::CheckForObjectsResultConstPtr& result) 
+		{
 			short k = 0;
-			for(const auto& bb : result->boundingBoxes.boundingBoxes) {
+			for(const auto& bb : result->boundingBoxes.boundingBoxes) 
+			{
 				ROS_INFO("#%d: %s; Prob: %3f", ++k, bb.Class.c_str(), bb.probability);
+				cv::line(oldDepth_->image, cv::Point(bb.xmin, bb.ymin), cv::Point(bb.xmax, bb.ymin), 1.0);
+				cv::line(oldDepth_->image, cv::Point(bb.xmin, bb.ymin), cv::Point(bb.xmin, bb.ymax), 1.0);
+				cv::line(oldDepth_->image, cv::Point(bb.xmin, bb.ymax), cv::Point(bb.xmax, bb.ymax), 1.0);
+				cv::line(oldDepth_->image, cv::Point(bb.xmax, bb.ymin), cv::Point(bb.xmax, bb.ymax), 1.0);
 			}
+			cv::imshow("win", oldDepth_->image);
+			char wKey = cv::waitKey(1) & 0xFF;
 			return;
 		}
 };

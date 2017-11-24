@@ -1,6 +1,6 @@
 # Butler
 
-Butler robocup@home
+Butler MDH@home
 
 ## Getting Started
 
@@ -12,7 +12,9 @@ git clone --recursive https://github.com/notlochness/Butler.git
 
 Note that darknet\_ros automatically detects CUDA if existent and wants to build with CUDA support, see the CMakeLists.txt in darknet\_ros in order to cofigure the correct CUDA version.
 
-Weights for darknet\_ros should be placed in darknet\_ros/darknet\_ros/yolo\_network\_config/weights
+Weights for darknet\_ros will be avaliable on Teams and should be placed in `darknet_ros/darknet_ros/yolo_network_config/weights`
+
+Its also encouraged to build at least darknet\_ros with a `-DCMAKE_BUILD_TYPE=Release` flag in order to increase performance.
 
 
 Please read through the coding style guides we are using
