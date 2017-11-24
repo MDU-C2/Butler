@@ -1,0 +1,11 @@
+yolo_model:
+
+  config_file:
+    name: butler_cups.cfg
+  weight_file:
+    name: butler_cups.weights
+  threshold:
+    value: 0.2
+  detection_classes:
+    names:
+      - cup

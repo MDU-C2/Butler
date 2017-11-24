@@ -4,6 +4,17 @@ Butler robocup@home
 
 ## Getting Started
 
+Clone recusively in order to sync submodules, such as
+
+```
+git clone --recursive https://github.com/notlochness/Butler.git 
+```
+
+Note that darknet\_ros automatically detects CUDA if existent and wants to build with CUDA support, see the CMakeLists.txt in darknet\_ros in order to cofigure the correct CUDA version.
+
+Weights for darknet\_ros should be placed in darknet\_ros/darknet\_ros/yolo\_network\_config/weights
+
+
 Please read through the coding style guides we are using
 
 * [CppStyleGuide](http://wiki.ros.org/CppStyleGuide) - ROS Cpp Style Guide
