@@ -33,20 +33,20 @@ class ObjectDetector
 		darknet_ros_msgs::CheckForObjectsGoal goal_;
 		darknet_ros_msgs::CheckForObjectsResult result_;
 
-		Client_T_ Client_;
+		Client_T_ client_;
 
 		sensor_msgs::Image rgbImg_, depthImg_;
 		cv_bridge::CvImagePtr oldDepth_;
 
 	public:
 		ObjectDetector(const std::string& clientname) 
-			: Client_(clientname, true) 
+			: client_(clientname, true) 
 		{
 			depthS_ = n_.subscribe(Depth_Topic_, 0, &ObjectDetector::depthCallback, this);
 			rgbS_ = n_.subscribe(RGB_Topic_, 0, &ObjectDetector::rgbCallback, this);
 
 			ROS_INFO("waiting for action server to start");
-			Client_.waitForServer();
+			client_.waitForServer();
 		}
 
 		~ObjectDetector() 
@@ -120,11 +120,10 @@ class ObjectDetector
 				return;
 			}
 
-			Client_.sendGoal(goal_,
+			client_.sendGoal(goal_,
 					boost::bind(&ObjectDetector::detectorCallback, this, _1, _2),
 					Client_T_::SimpleActiveCallback(),
 					Client_T_::SimpleFeedbackCallback());
-			//			Client_.sendGoal(goal_);
 			ROS_INFO("sent goal");
 			return;
 		}
@@ -132,16 +131,37 @@ class ObjectDetector
 		void detectorCallback(const actionlib::SimpleClientGoalState& state,
 				const darknet_ros_msgs::CheckForObjectsResultConstPtr& result) 
 		{
-			short k = 0;
+			short m = 0;
 			for(const auto& bb : result->boundingBoxes.boundingBoxes) 
 			{
-				ROS_INFO("#%d: %s; Prob: %3f", ++k, bb.Class.c_str(), bb.probability);
-				cv::line(oldDepth_->image, cv::Point(bb.xmin, bb.ymin), cv::Point(bb.xmax, bb.ymin), 1.0);
-				cv::line(oldDepth_->image, cv::Point(bb.xmin, bb.ymin), cv::Point(bb.xmin, bb.ymax), 1.0);
-				cv::line(oldDepth_->image, cv::Point(bb.xmin, bb.ymax), cv::Point(bb.xmax, bb.ymax), 1.0);
-				cv::line(oldDepth_->image, cv::Point(bb.xmax, bb.ymin), cv::Point(bb.xmax, bb.ymax), 1.0);
+
+				double avg = 0.0;
+				int sum = 0;
+				for(int k = bb.xmin; k < bb.xmax; ++k) 
+				{
+					for(int l = bb.ymin; l < bb.ymax; ++l) 
+					{
+						if(oldDepth_->image.at<unsigned char>(cv::Point(k, l)) > 20)
+						{ 
+							avg += oldDepth_->image.at<unsigned char>(cv::Point(k, l)) / 255.0;
+							sum++;
+						}
+					}
+				}
+				if(sum) avg /= sum;
+
+				ROS_INFO("#%d: %s; Prob: %3f; Avg: %3f", ++m, bb.Class.c_str(), bb.probability, avg);
+
+				std::ostringstream s;
+				s << std::setprecision(3) << m << "; P: " << bb.probability << "; A: " << avg;
+
+				//	cv::rectangle(oldDepth_->image, cv::Point(bb.xmin, bb.ymin), cv::Point(bb.xmax, bb.ymax), 1.0, 2);
+				cv::putText(oldDepth_->image, s.str(), cv::Point(bb.xmin, bb.ymin), cv::FONT_HERSHEY_PLAIN, 1.0, 1.0);
+				cv::line(oldDepth_->image, cv::Point(bb.xmin, bb.ymin), cv::Point(bb.xmin, bb.ymax), 1.0, 2);
+				cv::line(oldDepth_->image, cv::Point(bb.xmin, bb.ymax), cv::Point(bb.xmax, bb.ymax), 1.0, 2);
+				cv::line(oldDepth_->image, cv::Point(bb.xmax, bb.ymin), cv::Point(bb.xmax, bb.ymax), 1.0, 2);
 			}
-			cv::imshow("win", oldDepth_->image);
+			cv::imshow("depthwin", oldDepth_->image);
 			char wKey = cv::waitKey(1) & 0xFF;
 			return;
 		}
