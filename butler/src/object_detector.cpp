@@ -8,7 +8,6 @@ const std::string Action_Server_ 	= "/darknet_ros/check_for_objects";
 
 /* 
  * TODO
- * map bounding box onto depth image
  * extract distance to detected object
  * 3d coordinates???
  */

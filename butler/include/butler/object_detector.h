@@ -25,19 +25,6 @@ typedef actionlib::SimpleActionClient<darknet_ros_msgs::CheckForObjectsAction> C
 
 class ObjectDetector 
 {
-	private:
-		ros::NodeHandle n_;
-		ros::Subscriber depthS_, rgbS_;
-		ros::Publisher cupPublisher_, rgbPub_, depthPub_;
-
-		darknet_ros_msgs::CheckForObjectsGoal goal_;
-		darknet_ros_msgs::CheckForObjectsResult result_;
-
-		Client_T_ client_;
-
-		sensor_msgs::Image rgbImg_, depthImg_;
-		cv_bridge::CvImagePtr oldDepth_;
-
 	public:
 		ObjectDetector(const std::string& clientname) 
 			: client_(clientname, true) 
@@ -125,6 +112,8 @@ class ObjectDetector
 					Client_T_::SimpleActiveCallback(),
 					Client_T_::SimpleFeedbackCallback());
 			ROS_INFO("sent goal");
+
+			//client_.waitForResult(ros::Duration(5.0));
 			return;
 		}
 
@@ -134,37 +123,77 @@ class ObjectDetector
 			short m = 0;
 			for(const auto& bb : result->boundingBoxes.boundingBoxes) 
 			{
-
-				double avg = 0.0;
-				int sum = 0;
-				for(int k = bb.xmin; k < bb.xmax; ++k) 
+				cv::Mat obj((bb.xmax - bb.xmin) * (bb.ymax - bb.ymin), 1, CV_32F);
+				for(int k = 0; k < (bb.xmax - bb.xmin); ++k)
 				{
-					for(int l = bb.ymin; l < bb.ymax; ++l) 
+					for(int l = 0; l < (bb.ymax - bb.ymin); ++l)
 					{
-						if(oldDepth_->image.at<unsigned char>(cv::Point(k, l)) > 20)
-						{ 
-							avg += oldDepth_->image.at<unsigned char>(cv::Point(k, l)) / 255.0;
-							sum++;
-						}
+						float cc = (float) oldDepth_->image.at<unsigned char>(l + bb.ymin, k + bb.xmin) / 255.0;
+						obj.at<float>(l + (k * (bb.ymax - bb.ymin)), 0) = cc;
 					}
 				}
-				if(sum) avg /= sum;
 
-				ROS_INFO("#%d: %s; Prob: %3f; Avg: %3f", ++m, bb.Class.c_str(), bb.probability, avg);
+				cv::Mat labels, centers;
+				/*
+				 * K-Means clustering to find a decent depth to the detected object
+				 */
+				cv::kmeans(obj, 2, labels, 
+						cv::TermCriteria(CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, 10, 1.0), 
+						3, cv::KMEANS_PP_CENTERS, centers);
+
+				float dist = centers.at<float>(0, 0);
+				float avg = 0.0;
+				int count = 0;
+				for(int k = 0; k < (bb.xmax - bb.xmin); ++k)
+				{
+					for(int l = 0; l < (bb.ymax - bb.ymin); ++l)
+					{
+						avg += thresh(oldDepth_->image.at<unsigned char>(l + bb.ymin, k + bb.xmin), count, 0.1);
+						int idx = labels.at<int>(l + (k * (bb.ymax - bb.ymin)), 0);
+						oldDepth_->image.at<unsigned char>(l + bb.ymin, k + bb.xmin) = (unsigned char) (centers.at<float>(idx, 0) * 255);
+						if(dist < centers.at<float>(idx, 0)) dist = centers.at<float>(idx, 0);
+					}
+				}
+				avg /= (float) count;
 
 				std::ostringstream s;
-				s << std::setprecision(3) << m << "; P: " << bb.probability << "; A: " << avg;
+				s << std::setprecision(3) << m << "; P: " << bb.probability;
 
-				//	cv::rectangle(oldDepth_->image, cv::Point(bb.xmin, bb.ymin), cv::Point(bb.xmax, bb.ymax), 1.0, 2);
 				cv::putText(oldDepth_->image, s.str(), cv::Point(bb.xmin, bb.ymin), cv::FONT_HERSHEY_PLAIN, 1.0, 1.0);
 				cv::line(oldDepth_->image, cv::Point(bb.xmin, bb.ymin), cv::Point(bb.xmin, bb.ymax), 1.0, 2);
 				cv::line(oldDepth_->image, cv::Point(bb.xmin, bb.ymax), cv::Point(bb.xmax, bb.ymax), 1.0, 2);
 				cv::line(oldDepth_->image, cv::Point(bb.xmax, bb.ymin), cv::Point(bb.xmax, bb.ymax), 1.0, 2);
+
+				ROS_INFO("#%d: %s; Prb: %3f, K: %3f, A: %3f", ++m, bb.Class.c_str(), bb.probability, dist, avg);
 			}
 			cv::imshow("depthwin", oldDepth_->image);
 			char wKey = cv::waitKey(1) & 0xFF;
 			return;
 		}
+
+	private:
+		ros::NodeHandle n_;
+		ros::Subscriber depthS_, rgbS_;
+		ros::Publisher cupPublisher_, rgbPub_, depthPub_;
+
+		darknet_ros_msgs::CheckForObjectsGoal goal_;
+		darknet_ros_msgs::CheckForObjectsResult result_;
+
+		Client_T_ client_;
+
+		sensor_msgs::Image rgbImg_, depthImg_;
+		cv_bridge::CvImagePtr oldDepth_;
+
+		inline float thresh(const unsigned char& d, int& c, const float v)
+		{
+			if((float) (d / 255.0) > v) 
+			{
+				c++;
+				return (float) (d / 255.0);
+			}
+			else return 0.0;
+		}
+
 };
 
 #endif
