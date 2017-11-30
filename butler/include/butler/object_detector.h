@@ -268,7 +268,7 @@ class ObjectDetector
 		inline void draw(cv_bridge::CvImagePtr& img_, const darknet_ros_msgs::BoundingBox& box_, const int counter_)
 		{
 			std::ostringstream str_;
-			str_ << std::setprecision(3) << m << "; P: " << box_.probability;
+			str_ << std::setprecision(3) << counter_ << "; P: " << box_.probability;
 			cv::putText(img_->image, str_.str(), cv::Point(box_.xmin, box_.ymin), cv::FONT_HERSHEY_PLAIN, 1.0, 1.0);
 			cv::line(img_->image, cv::Point(box_.xmin, box_.ymin), cv::Point(box_.xmin, box_.ymax), 1.0, 2);
 			cv::line(img_->image, cv::Point(box_.xmin, box_.ymax), cv::Point(box_.xmax, box_.ymax), 1.0, 2);
