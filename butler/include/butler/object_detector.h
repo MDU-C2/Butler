@@ -218,6 +218,9 @@ class ObjectDetector
 			else return 0.0;
 		}
 
+		/*
+		 * mean function, returns the mean of three same-type values and is mean to look at
+		 */
 		template<typename T>
 			inline T mean(T x, T y, T z)
 			{
