@@ -5,6 +5,7 @@
 #include <darknet_ros_msgs/BoundingBoxes.h>
 #include <darknet_ros_msgs/CheckForObjectsAction.h>
 #include <sensor_msgs/Image.h>
+#include <geometry_msgs/Point.h>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <image_transport/image_transport.h>
@@ -17,9 +18,9 @@
 
 extern const std::string Depth_Topic_;
 extern const std::string RGB_Topic_;
-extern const std::string RGB_Publisher_;
-extern const std::string Depth_Publisher_;
 extern const std::string Action_Server_; 
+extern const std::string Cup_Position_;
+
 
 typedef actionlib::SimpleActionClient<darknet_ros_msgs::CheckForObjectsAction> Client_T_;
 
@@ -31,6 +32,7 @@ class ObjectDetector
 		{
 			depthS_ = n_.subscribe(Depth_Topic_, 0, &ObjectDetector::depthCallback, this);
 			rgbS_ = n_.subscribe(RGB_Topic_, 0, &ObjectDetector::rgbCallback, this);
+			cupPublisher_ = n_.advertise<geometry_msgs::Point>(Cup_Position_, 1);
 
 			ROS_INFO("waiting for action server to start");
 			client_.waitForServer();
@@ -164,7 +166,7 @@ class ObjectDetector
 				dist = mean(centers.at<float>(0), centers.at<float>(1), centers.at<float>(2));
 				
 				ROS_INFO("centers: %f, %f, %f", centers.at<float>(0), centers.at<float>(1), centers.at<float>(2));
-				avg /= (float) count;
+				//avg /= (float) count;
 
 				std::ostringstream s;
 				s << std::setprecision(3) << m << "; P: " << bb.probability;
@@ -178,6 +180,10 @@ class ObjectDetector
 				cv::line(oldDepth_->image, cv::Point(bb.xmax, bb.ymin), cv::Point(bb.xmax, bb.ymax), 1.0, 2);
 
 				//ROS_INFO("#%d: %s; Prb: %3f, K: %3f, A: %3f", ++m, bb.Class.c_str(), bb.probability, dist, avg);
+				cupPos_.x = 0.0;
+				cupPos_.y = 0.0;
+				cupPos_.z = (double) dist; //depth
+				cupPublisher_.publish(cupPos_);
 				ROS_INFO("#%d: %s; Prb: %3f, K: %3f", ++m, bb.Class.c_str(), bb.probability, dist);
 			}
 			cv::imshow("depthwin", oldDepth_->image);
@@ -188,13 +194,14 @@ class ObjectDetector
 	private:
 		ros::NodeHandle n_;
 		ros::Subscriber depthS_, rgbS_;
-		ros::Publisher cupPublisher_, rgbPub_, depthPub_;
+		ros::Publisher cupPublisher_; 
 
 		darknet_ros_msgs::CheckForObjectsGoal goal_;
 		darknet_ros_msgs::CheckForObjectsResult result_;
 
 		Client_T_ client_;
-
+		
+		geometry_msgs::Point cupPos_;
 		sensor_msgs::Image rgbImg_, depthImg_;
 		cv_bridge::CvImagePtr oldDepth_;
 

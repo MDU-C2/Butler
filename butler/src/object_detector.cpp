@@ -1,10 +1,9 @@
 #include <butler/object_detector.h>
 
 const std::string Depth_Topic_		= "/camera/depth_registered/image_raw";
-const std::string Depth_Publisher_ 	= "/detector/depth";
 const std::string RGB_Topic_ 		= "/usb_cam/image_raw";
-const std::string RGB_Publisher_ 	= "/detector/rgb";
 const std::string Action_Server_ 	= "/darknet_ros/check_for_objects";
+const std::string Cup_Position_		= "/object_detector/cup_position";
 
 /* 
  * TODO
