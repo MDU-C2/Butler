@@ -1,7 +1,8 @@
 controller_list:
-  - name: "arm_controller"
+  - name: "position_trajectory_controller"
     action_ns: follow_joint_trajectory
     type: FollowJointTrajectory
+    default: true
     joints:
       - tower_joint
       - arm_base_joint
