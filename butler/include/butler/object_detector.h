@@ -36,17 +36,16 @@ class ObjectDetector
 
 			ROS_INFO("waiting for action server to start");
 			client_.waitForServer();
+			ROS_INFO("connected to action server");
 		}
 
 		~ObjectDetector() 
 		{
 		}
 
-		void publishCup() 
-		{
-			return;
-		}
-
+		/*
+		 * callback function for depth image subscriber
+		 */
 		void depthCallback(const sensor_msgs::Image& img) 
 		{
 			depthImg_ = img;
@@ -54,12 +53,19 @@ class ObjectDetector
 
 		}
 
+		/*
+		 * callback function for rgb image subscriber
+		 */
 		void rgbCallback(const sensor_msgs::Image& img) 
 		{
 			rgbImg_ = img;
 			return;
 		}
 
+		/*
+		 * unnecessary function to display depth image
+		 * should be removed eventually
+		 */
 		void showDepth()
 		{
 			cv_bridge::CvImagePtr dimg;
@@ -77,6 +83,10 @@ class ObjectDetector
 			return;
 		}
 
+		/*
+		 * unnecessary function to display rgb image
+		 * should be removed eventually
+		 */
 		void showRGB()
 		{
 			cv_bridge::CvImagePtr cimg;
@@ -94,11 +104,19 @@ class ObjectDetector
 			return;
 		}
 
+		/*
+		 * function to send goal to detector
+		 * latest rgb image is attached to the message
+		 * as is the object id in question
+		 */
 		void sendGoal(const int id) 
 		{
 			goal_.id = id;
 			goal_.image = rgbImg_;
 
+			/*
+			 * convert sensor_msgs::Image to opencv image
+			 */
 			try
 			{
 				oldDepth_ = cv_bridge::toCvCopy(depthImg_, sensor_msgs::image_encodings::TYPE_32FC1);
@@ -109,16 +127,23 @@ class ObjectDetector
 				return;
 			}
 
+			/*
+			 * send goal function
+			 * binds callback function
+			 */
 			client_.sendGoal(goal_,
 					boost::bind(&ObjectDetector::detectorCallback, this, _1, _2),
 					Client_T_::SimpleActiveCallback(),
 					Client_T_::SimpleFeedbackCallback());
 			ROS_INFO("sent goal");
 
-			//client_.waitForResult(ros::Duration(5.0));
 			return;
 		}
 
+		/*
+		 * detector callback function
+		 * does the fun stuff such as extract and publish cup coordinates
+		 */
 		void detectorCallback(const actionlib::SimpleClientGoalState& state,
 				const darknet_ros_msgs::CheckForObjectsResultConstPtr& result) 
 		{
@@ -138,82 +163,89 @@ class ObjectDetector
 					}
 				}
 
-				cv::Mat labels, centers;
 				/*
-				 * K-Means clustering to find a decent depth to the detected object
+				 * K-Means clustering to find a decent depth estimate to the detected object
 				 */
+				cv::Mat labels, centers;
 				cv::kmeans(obj, 3, labels, 
 						cv::TermCriteria(CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, 50, 0.1), 
 						3, cv::KMEANS_PP_CENTERS, centers);
 
-				float dist = 0.0,	//k-means distanec
-					  avg = 0.0;	//threshholded average distance
-				int count = 0;
+				float dist = 0.0;	//k-means distance
+
 				/*
-				 * calculate average of thresholded pixel values for distance estimate
-				 * also draw the clustered colors onto the original image
+				 * depth image is imprecise
+				 * 3 clusters increases assurance that the cup map is extracted correctly
+				 * background/foreground/misreadings generally give darker/brigher values than the cup
 				 */
-			//	for(int k = 0; k < (bb.xmax - bb.xmin); ++k)
-			//	{
-			//		for(int l = 0; l < (bb.ymax - bb.ymin); ++l)
-			//		{
-			//			avg += thresh(oldDepth_->image.at<unsigned char>(l + bb.ymin, k + bb.xmin), count, 0.1);
-			//			int idx = labels.at<int>(l + (k * (bb.ymax - bb.ymin)), 0);
-			//			oldDepth_->image.at<unsigned char>(l + bb.ymin, k + bb.xmin) = (unsigned char) (centers.at<float>(idx, 0) * 255);
-			//		}
-			//	}
-				
 				dist = mean(centers.at<float>(0), centers.at<float>(1), centers.at<float>(2));
-				
-				ROS_INFO("centers: %f, %f, %f", centers.at<float>(0), centers.at<float>(1), centers.at<float>(2));
-				//avg /= (float) count;
-
-				std::ostringstream s;
-				s << std::setprecision(3) << m << "; P: " << bb.probability;
 
 				/*
-				 * draw bounding boxes on depth image
+				 * draw bounding boxes and info on depth image
+				 * for debugging purposes, will be removed in the end i guess
 				 */
-				cv::putText(oldDepth_->image, s.str(), cv::Point(bb.xmin, bb.ymin), cv::FONT_HERSHEY_PLAIN, 1.0, 1.0);
-				cv::line(oldDepth_->image, cv::Point(bb.xmin, bb.ymin), cv::Point(bb.xmin, bb.ymax), 1.0, 2);
-				cv::line(oldDepth_->image, cv::Point(bb.xmin, bb.ymax), cv::Point(bb.xmax, bb.ymax), 1.0, 2);
-				cv::line(oldDepth_->image, cv::Point(bb.xmax, bb.ymin), cv::Point(bb.xmax, bb.ymax), 1.0, 2);
+				draw(oldDepth_, bb, m);
 
-				//ROS_INFO("#%d: %s; Prb: %3f, K: %3f, A: %3f", ++m, bb.Class.c_str(), bb.probability, dist, avg);
+				/*
+				 * publisher and info output
+				 */
 				cupPos_.x = 0.0;
 				cupPos_.y = 0.0;
 				cupPos_.z = (double) dist; //depth
 				cupPublisher_.publish(cupPos_);
 				ROS_INFO("#%d: %s; Prb: %3f, K: %3f", ++m, bb.Class.c_str(), bb.probability, dist);
 			}
+			/*
+			 * displays depth image with bounding boxes
+			 * for debugging purposes, will be removed in the end i guess
+			 */
 			cv::imshow("depthwin", oldDepth_->image);
 			char wKey = cv::waitKey(1) & 0xFF;
 			return;
 		}
 
 	private:
+		/*
+		 * Node
+		 * Subscribers
+		 * Publisher
+		 */
 		ros::NodeHandle n_;
 		ros::Subscriber depthS_, rgbS_;
 		ros::Publisher cupPublisher_; 
 
+
+		/*
+		 * Action client for darknet_ros object detector
+		 */
+		Client_T_ client_;
+
+		/*
+		 * message variables
+		 * cupPos_: x, y, z position published on Cup_Position_ topic
+		 * rgbImg_, depthImg_: image messages from orbbec astra camera
+		 * goal_: rgbImg_ and id for object detector
+		 * result_: resulting bounding boxes and probabilities from detector
+		 */  
+		geometry_msgs::Point cupPos_;
+		sensor_msgs::Image rgbImg_, depthImg_;
 		darknet_ros_msgs::CheckForObjectsGoal goal_;
 		darknet_ros_msgs::CheckForObjectsResult result_;
 
-		Client_T_ client_;
-		
-		geometry_msgs::Point cupPos_;
-		sensor_msgs::Image rgbImg_, depthImg_;
+		/*
+		 * retention of depth image, stored every time a goal is sent to darknet_ros for detection
+		 */
 		cv_bridge::CvImagePtr oldDepth_;
 
 		/*
 		 * threshholding function, also keeps track of "successful" addition with int& c
 		 */
-		inline float thresh(const unsigned char d, int& c, const float v)
+		inline float thresh(const unsigned char value_, int& counter_, const float threshval_)
 		{
-			if((float) (d / 255.0) > v) 
+			if((float) (value_ / 255.0) > threshval_) 
 			{
-				c++;
-				return (float) (d / 255.0);
+				counter_++;
+				return (float) (value_ / 255.0);
 			}
 			else return 0.0;
 		}
@@ -228,8 +260,21 @@ class ObjectDetector
 				if(((y < x) && (y > z)) || ((y < z) && (y > x))) return y;
 				if(((z < x) && (z > y)) || ((z < y) && (z > x))) return z;
 			}
-		
 
+		/*
+		 * draw function
+		 * might as well have a separate function for it to avoid a mess
+		 */
+		inline void draw(cv_bridge::CvImagePtr& img_, const darknet_ros_msgs::BoundingBox& box_, const int counter_)
+		{
+			std::ostringstream str_;
+			str_ << std::setprecision(3) << m << "; P: " << box_.probability;
+			cv::putText(img_->image, str_.str(), cv::Point(box_.xmin, box_.ymin), cv::FONT_HERSHEY_PLAIN, 1.0, 1.0);
+			cv::line(img_->image, cv::Point(box_.xmin, box_.ymin), cv::Point(box_.xmin, box_.ymax), 1.0, 2);
+			cv::line(img_->image, cv::Point(box_.xmin, box_.ymax), cv::Point(box_.xmax, box_.ymax), 1.0, 2);
+			cv::line(img_->image, cv::Point(box_.xmax, box_.ymin), cv::Point(box_.xmax, box_.ymax), 1.0, 2);
+			return;
+		}
 };
 
 #endif
