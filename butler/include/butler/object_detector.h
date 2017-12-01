@@ -153,25 +153,18 @@ class ObjectDetector
 				/*
 				 * reshape bounding box pixels into a 1D array for k-means
 				 */
-				cv::Mat obj((bb.xmax - bb.xmin) * (bb.ymax - bb.ymin), 1, CV_32F);
-				for(int k = 0; k < (bb.xmax - bb.xmin); ++k)
-				{
-					for(int l = 0; l < (bb.ymax - bb.ymin); ++l)
-					{
-						float cc = (float) oldDepth_->image.at<unsigned char>(l + bb.ymin, k + bb.xmin) / 255.0;
-						obj.at<float>(l + (k * (bb.ymax - bb.ymin)), 0) = cc;
-					}
-				}
+				cv::Mat obj, labels, centers;
+				reshape(obj, oldDepth_, bb);
 
 				/*
 				 * K-Means clustering to find a decent depth estimate to the detected object
+				 * probably not necessary with image_geometry
 				 */
-				cv::Mat labels, centers;
 				cv::kmeans(obj, 3, labels, 
-						cv::TermCriteria(CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, 50, 0.1), 
+						cv::TermCriteria(CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, 10000, 0.001), 
 						3, cv::KMEANS_PP_CENTERS, centers);
 
-				float dist = 0.0;	//k-means distance
+				float dist = 0.0;	//distance/depth to cup
 
 				/*
 				 * depth image is imprecise
@@ -181,12 +174,6 @@ class ObjectDetector
 				dist = mean(centers.at<float>(0), centers.at<float>(1), centers.at<float>(2));
 
 				/*
-				 * draw bounding boxes and info on depth image
-				 * for debugging purposes, will be removed in the end i guess
-				 */
-				draw(oldDepth_, bb, m);
-
-				/*
 				 * publisher and info output
 				 */
 				cupPos_.x = 0.0;
@@ -194,6 +181,12 @@ class ObjectDetector
 				cupPos_.z = (double) dist; //depth
 				cupPublisher_.publish(cupPos_);
 				ROS_INFO("#%d: %s; Prb: %3f, K: %3f", ++m, bb.Class.c_str(), bb.probability, dist);
+
+				/*
+				 * draw bounding boxes and info on depth image
+				 * for debugging purposes, will be removed in the end i guess
+				 */
+				draw(oldDepth_, bb, m);
 			}
 			/*
 			 * displays depth image with bounding boxes
@@ -201,6 +194,7 @@ class ObjectDetector
 			 */
 			cv::imshow("depthwin", oldDepth_->image);
 			char wKey = cv::waitKey(1) & 0xFF;
+
 			return;
 		}
 
@@ -239,8 +233,9 @@ class ObjectDetector
 
 		/*
 		 * threshholding function, also keeps track of "successful" addition with int& c
+		 * not really used
 		 */
-		inline float thresh(const unsigned char value_, int& counter_, const float threshval_)
+		float thresh(const unsigned char value_, int& counter_, const float threshval_)
 		{
 			if((float) (value_ / 255.0) > threshval_) 
 			{
@@ -254,25 +249,46 @@ class ObjectDetector
 		 * mean function, returns the mean of three same-type values and is mean to look at
 		 */
 		template<typename T>
-			inline T mean(T x, T y, T z)
+			T mean(T x, T y, T z)
 			{
 				if(((x < y) && (x > z)) || ((x < z) && (x > y))) return x;
-				if(((y < x) && (y > z)) || ((y < z) && (y > x))) return y;
-				if(((z < x) && (z > y)) || ((z < y) && (z > x))) return z;
+				else if(((y < x) && (y > z)) || ((y < z) && (y > x))) return y;
+				else if(((z < x) && (z > y)) || ((z < y) && (z > x))) return z;
+				//what are the odds of two exactly equal inputs right
+				else return (x + y + z) / (T) 3;
 			}
 
 		/*
 		 * draw function
 		 * might as well have a separate function for it to avoid a mess
 		 */
-		inline void draw(cv_bridge::CvImagePtr& img_, const darknet_ros_msgs::BoundingBox& box_, const int counter_)
+		void draw(cv_bridge::CvImagePtr& img_, const darknet_ros_msgs::BoundingBox& box_, int counter_)
 		{
 			std::ostringstream str_;
 			str_ << std::setprecision(3) << counter_ << "; P: " << box_.probability;
-			cv::putText(img_->image, str_.str(), cv::Point(box_.xmin, box_.ymin), cv::FONT_HERSHEY_PLAIN, 1.0, 1.0);
-			cv::line(img_->image, cv::Point(box_.xmin, box_.ymin), cv::Point(box_.xmin, box_.ymax), 1.0, 2);
-			cv::line(img_->image, cv::Point(box_.xmin, box_.ymax), cv::Point(box_.xmax, box_.ymax), 1.0, 2);
-			cv::line(img_->image, cv::Point(box_.xmax, box_.ymin), cv::Point(box_.xmax, box_.ymax), 1.0, 2);
+
+			cv::rectangle(img_->image, cv::Point(box_.xmin, box_.ymin), cv::Point(box_.xmax, box_.ymin - 12), 1.0, -1);
+			cv::rectangle(img_->image, cv::Point(box_.xmin, box_.ymin), cv::Point(box_.xmax, box_.ymax), 1.0);
+			cv::putText(img_->image, str_.str(), cv::Point(box_.xmin, box_.ymin), cv::FONT_HERSHEY_PLAIN, 1.0, 0.0, 2);
+
+			return;
+		}
+
+		/*
+		 * reshapes the boundingbox subset of img_ into a 1D array in obj_
+		 */
+		void reshape(cv::Mat& obj_, const cv_bridge::CvImagePtr& img_, const darknet_ros_msgs::BoundingBox& box_)
+		{
+			obj_ = cv::Mat((box_.xmax - box_.xmin) * (box_.ymax - box_.ymin), 1, CV_32F);
+			for(int k = 0; k < (box_.xmax - box_.xmin); ++k)
+			{
+				for(int l = 0; l < (box_.ymax - box_.ymin); ++l)
+				{
+					float cc = (float) img_->image.at<unsigned char>(l + box_.ymin, k + box_.xmin) / 255.0;
+					obj_.at<float>(l + (k * (box_.ymax - box_.ymin)), 0) = cc;
+				}
+			}
+
 			return;
 		}
 };
