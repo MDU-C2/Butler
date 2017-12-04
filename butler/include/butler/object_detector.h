@@ -5,6 +5,7 @@
 #include <darknet_ros_msgs/BoundingBoxes.h>
 #include <darknet_ros_msgs/CheckForObjectsAction.h>
 #include <sensor_msgs/Image.h>
+#include <sensor_msgs/CameraInfo.h>
 #include <geometry_msgs/Point.h>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -20,6 +21,7 @@ extern const std::string Depth_Topic_;
 extern const std::string RGB_Topic_;
 extern const std::string Action_Server_; 
 extern const std::string Cup_Position_;
+extern const std::string Camera_Info_;
 
 
 typedef actionlib::SimpleActionClient<darknet_ros_msgs::CheckForObjectsAction> Client_T_;
@@ -32,6 +34,7 @@ class ObjectDetector
 		{
 			depthS_ = n_.subscribe(Depth_Topic_, 0, &ObjectDetector::depthCallback, this);
 			rgbS_ = n_.subscribe(RGB_Topic_, 0, &ObjectDetector::rgbCallback, this);
+			cInfoS_ = n_.subscribe(Camera_Info_, 0, &ObjectDetector::cInfoCallback, this);
 			cupPublisher_ = n_.advertise<geometry_msgs::Point>(Cup_Position_, 1);
 
 			ROS_INFO("waiting for action server to start");
@@ -59,6 +62,15 @@ class ObjectDetector
 		void rgbCallback(const sensor_msgs::Image& img) 
 		{
 			rgbImg_ = img;
+			return;
+		}
+
+		/*
+		 * callback function for camera info subscriber
+		 */
+		void cInfoCallback(const sensor_msgs::CameraInfo& info)
+		{
+			cameraInfo_ = info;
 			return;
 		}
 
@@ -176,10 +188,7 @@ class ObjectDetector
 				/*
 				 * publisher and info output
 				 */
-				cupPos_.x = 0.0;
-				cupPos_.y = 0.0;
-				cupPos_.z = (double) dist; //depth
-				cupPublisher_.publish(cupPos_);
+				publishXYZ(bb, (double) dist);
 				ROS_INFO("#%d: %s; Prb: %3f, K: %3f", ++m, bb.Class.c_str(), bb.probability, dist);
 
 				/*
@@ -205,7 +214,7 @@ class ObjectDetector
 		 * Publisher
 		 */
 		ros::NodeHandle n_;
-		ros::Subscriber depthS_, rgbS_;
+		ros::Subscriber depthS_, rgbS_, cInfoS_;
 		ros::Publisher cupPublisher_; 
 
 
@@ -223,6 +232,7 @@ class ObjectDetector
 		 */  
 		geometry_msgs::Point cupPos_;
 		sensor_msgs::Image rgbImg_, depthImg_;
+		sensor_msgs::CameraInfo cameraInfo_;
 		darknet_ros_msgs::CheckForObjectsGoal goal_;
 		darknet_ros_msgs::CheckForObjectsResult result_;
 
@@ -265,7 +275,7 @@ class ObjectDetector
 		void draw(cv_bridge::CvImagePtr& img_, const darknet_ros_msgs::BoundingBox& box_, int counter_)
 		{
 			std::ostringstream str_;
-			str_ << std::setprecision(3) << counter_ << "; P: " << box_.probability;
+			str_ << std::setprecision(3) << "#" << counter_ << "; P: " << box_.probability;
 
 			cv::rectangle(img_->image, cv::Point(box_.xmin, box_.ymin), cv::Point(box_.xmax, box_.ymin - 12), 1.0, -1);
 			cv::rectangle(img_->image, cv::Point(box_.xmin, box_.ymin), cv::Point(box_.xmax, box_.ymax), 1.0);
@@ -288,6 +298,22 @@ class ObjectDetector
 					obj_.at<float>(l + (k * (box_.ymax - box_.ymin)), 0) = cc;
 				}
 			}
+
+			return;
+		}
+
+		/*
+		 * maps depth image coordinates into meters
+		 * hopefully
+		 */
+		void publishXYZ(const darknet_ros_msgs::BoundingBox& box_, double zd)
+		{
+			double xd = ((double) box_.xmin) + ((double) (box_.xmax - box_.xmin)) / 2.0;
+			double yd = ((double) box_.ymin) + ((double) (box_.ymax - box_.ymin)) / 2.0;
+			cupPos_.x = (xd - cameraInfo_.K[2] - cameraInfo_.P[3]) * zd / cameraInfo_.K[0];
+			cupPos_.y = (yd - cameraInfo_.K[5] - cameraInfo_.P[7]) * zd / cameraInfo_.K[4];
+			cupPos_.z = zd; //depth
+			cupPublisher_.publish(cupPos_);
 
 			return;
 		}
