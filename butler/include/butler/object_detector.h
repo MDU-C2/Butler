@@ -2,6 +2,7 @@
 #define _OBJECT_DETECTOR_H_
 
 #include <ros/ros.h>
+#include <cmath>
 #include <darknet_ros_msgs/BoundingBoxes.h>
 #include <darknet_ros_msgs/CheckForObjectsAction.h>
 #include <sensor_msgs/Image.h>
@@ -132,6 +133,7 @@ class ObjectDetector
 			try
 			{
 				oldDepth_ = cv_bridge::toCvCopy(depthImg_, sensor_msgs::image_encodings::TYPE_32FC1);
+				std::cout << "depth type: " << oldDepth_->image.type() << std::endl;
 			}
 			catch (cv_bridge::Exception& e)
 			{
@@ -259,7 +261,7 @@ class ObjectDetector
 		 * mean function, returns the mean of three same-type values and is mean to look at
 		 */
 		template<typename T>
-			T mean(T x, T y, T z)
+			inline T mean(T x, T y, T z)
 			{
 				if(((x < y) && (x > z)) || ((x < z) && (x > y))) return x;
 				else if(((y < x) && (y > z)) || ((y < z) && (y > x))) return y;
@@ -274,12 +276,12 @@ class ObjectDetector
 		 */
 		void draw(cv_bridge::CvImagePtr& img_, const darknet_ros_msgs::BoundingBox& box_, int counter_)
 		{
-			std::ostringstream str_;
-			str_ << std::setprecision(3) << "#" << counter_ << "; P: " << box_.probability;
+			std::ostringstream title;
+			title << std::setprecision(3) << "#" << counter_ << "; P: " << box_.probability;
 
 			cv::rectangle(img_->image, cv::Point(box_.xmin, box_.ymin), cv::Point(box_.xmax, box_.ymin - 12), 1.0, -1);
 			cv::rectangle(img_->image, cv::Point(box_.xmin, box_.ymin), cv::Point(box_.xmax, box_.ymax), 1.0);
-			cv::putText(img_->image, str_.str(), cv::Point(box_.xmin, box_.ymin), cv::FONT_HERSHEY_PLAIN, 1.0, 0.0, 2);
+			cv::putText(img_->image, title.str(), cv::Point(box_.xmin, box_.ymin), cv::FONT_HERSHEY_PLAIN, 1.0, 0.0, 2);
 
 			return;
 		}
@@ -294,8 +296,8 @@ class ObjectDetector
 			{
 				for(int l = 0; l < (box_.ymax - box_.ymin); ++l)
 				{
-					float cc = (float) img_->image.at<unsigned char>(l + box_.ymin, k + box_.xmin) / 255.0;
-					obj_.at<float>(l + (k * (box_.ymax - box_.ymin)), 0) = cc;
+					float* cc = img_->image.ptr<float>(l + box_.ymin, k + box_.xmin);
+					obj_.at<float>(l + (k * (box_.ymax - box_.ymin)), 0) = (std::isnan(*cc)) ? 0.0 : *cc;
 				}
 			}
 
@@ -308,8 +310,10 @@ class ObjectDetector
 		 */
 		void publishXYZ(const darknet_ros_msgs::BoundingBox& box_, double zd)
 		{
-			double xd = ((double) box_.xmin) + ((double) (box_.xmax - box_.xmin)) / 2.0;
-			double yd = ((double) box_.ymin) + ((double) (box_.ymax - box_.ymin)) / 2.0;
+			double xd = ((double) box_.xmin) + (((double) (box_.xmax - box_.xmin)) / 2);
+			double yd = ((double) box_.ymin) + (((double) (box_.ymax - box_.ymin)) / 2);
+			// x,y might be without the zd multiplication, unsure
+			// change for image_geometry
 			cupPos_.x = (xd - cameraInfo_.K[2] - cameraInfo_.P[3]) * zd / cameraInfo_.K[0];
 			cupPos_.y = (yd - cameraInfo_.K[5] - cameraInfo_.P[7]) * zd / cameraInfo_.K[4];
 			cupPos_.z = zd; //depth
