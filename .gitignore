@@ -7,5 +7,6 @@
 *.png
 images/
 labels/
+docs/
 train.txt
 tags

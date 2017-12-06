@@ -1,21 +1,30 @@
 #ifndef _OBJECT_DETECTOR_H_
 #define _OBJECT_DETECTOR_H_
 
+/*
+ * ROS
+ */
 #include <ros/ros.h>
-#include <cmath>
+// image related
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <cv_bridge/cv_bridge.h>
+#include <image_transport/image_transport.h>
+// message related
 #include <darknet_ros_msgs/BoundingBoxes.h>
 #include <darknet_ros_msgs/CheckForObjectsAction.h>
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/CameraInfo.h>
 #include <geometry_msgs/Point.h>
-#include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/highgui/highgui.hpp>
-#include <image_transport/image_transport.h>
 #include <sensor_msgs/image_encodings.h>
-#include <cv_bridge/cv_bridge.h>
-
+// action related
 #include <actionlib/client/simple_action_client.h>
 #include <actionlib/client/terminal_state.h>
+
+/*
+ * C++
+ */
+#include <cmath>
 
 
 extern const std::string Depth_Topic_;
@@ -27,17 +36,34 @@ extern const std::string Camera_Info_;
 
 typedef actionlib::SimpleActionClient<darknet_ros_msgs::CheckForObjectsAction> Client_T_;
 
+namespace ObjectID {
+	const int Cup = 0;
+}
+
+/** @brief Main class for Object Detection
+ *
+ * 		Used to send images to darknet_ros and publish XYZ coordinates for detected objects
+ * 		Cup position is published on the "/object_detector/cup_position" topic
+ */
 class ObjectDetector 
 {
 	public:
+		/** @brief Default constructor for ObjectDetector class
+		 *
+		 * 		Initializes Action client, RGB, Depth, and CameraInfo subscribers, and Cup position publisher
+		 */
 		ObjectDetector(const std::string& clientname) 
-			: client_(clientname, true) 
+			: client_(clientname, true) //action client
 		{
+			/*
+			 * subscribers and publisher
+			 */
 			depthS_ = n_.subscribe(Depth_Topic_, 0, &ObjectDetector::depthCallback, this);
 			rgbS_ = n_.subscribe(RGB_Topic_, 0, &ObjectDetector::rgbCallback, this);
 			cInfoS_ = n_.subscribe(Camera_Info_, 0, &ObjectDetector::cInfoCallback, this);
 			cupPublisher_ = n_.advertise<geometry_msgs::Point>(Cup_Position_, 1);
 
+			//connection to action server
 			ROS_INFO("waiting for action server to start");
 			client_.waitForServer();
 			ROS_INFO("connected to action server");
@@ -47,18 +73,19 @@ class ObjectDetector
 		{
 		}
 
-		/*
-		 * callback function for depth image subscriber
+		/** @brief Callback function for depth image subscriber
+		 *
+		 *		stores the most recent depth image
 		 */
 		void depthCallback(const sensor_msgs::Image& img) 
 		{
 			depthImg_ = img;
 			return;
-
 		}
 
-		/*
-		 * callback function for rgb image subscriber
+		/** @brief Callback function for rgb image subscriber
+		 *
+		 * 		stores the most recent RGB image
 		 */
 		void rgbCallback(const sensor_msgs::Image& img) 
 		{
@@ -66,8 +93,10 @@ class ObjectDetector
 			return;
 		}
 
-		/*
-		 * callback function for camera info subscriber
+		/** @brief Callback function for camera info subscriber
+		 *
+		 * 		retrieves the camera info
+		 * 		specifically used to retrieve the camera matrices
 		 */
 		void cInfoCallback(const sensor_msgs::CameraInfo& info)
 		{
@@ -75,52 +104,9 @@ class ObjectDetector
 			return;
 		}
 
-		/*
-		 * unnecessary function to display depth image
-		 * should be removed eventually
-		 */
-		void showDepth()
-		{
-			cv_bridge::CvImagePtr dimg;
-			try 
-			{
-				dimg = cv_bridge::toCvCopy(depthImg_, sensor_msgs::image_encodings::TYPE_32FC1);
-			} 
-			catch (cv_bridge::Exception& e) 
-			{
-				ROS_ERROR("cv_bridge error: %s", e.what());
-				return;
-			}
-			cv::imshow("dwin", dimg->image);
-			char wKey = cv::waitKey(1) && 0xFF;
-			return;
-		}
-
-		/*
-		 * unnecessary function to display rgb image
-		 * should be removed eventually
-		 */
-		void showRGB()
-		{
-			cv_bridge::CvImagePtr cimg;
-			try 
-			{
-				cimg = cv_bridge::toCvCopy(rgbImg_, sensor_msgs::image_encodings::RGB8);
-			}
-			catch (cv_bridge::Exception& e) 
-			{
-				ROS_ERROR("cv_bridge error: %s", e.what());
-				return;
-			}
-			cv::imshow("cwin", cimg->image);
-			char wKey = cv::waitKey(1) && 0xFF;
-			return;
-		}
-
-		/*
-		 * function to send goal to detector
-		 * latest rgb image is attached to the message
-		 * as is the object id in question
+		/** @brief Main function to call the object detector
+		 *
+		 * 		latest rgb image is attached to goal message, as is the object id
 		 */
 		void sendGoal(const int id) 
 		{
@@ -154,9 +140,10 @@ class ObjectDetector
 			return;
 		}
 
-		/*
-		 * detector callback function
-		 * does the fun stuff such as extract and publish cup coordinates
+		/** @brief Detector callback function
+		 *
+		 * 		Used as a callback for sendGoal() and publishes the cup position
+		 * 		Does K-Means clustering for each Depth image region of interest in order to extract a more precise depth measurement
 		 */
 		void detectorCallback(const actionlib::SimpleClientGoalState& state,
 				const darknet_ros_msgs::CheckForObjectsResultConstPtr& result) 
@@ -240,28 +227,14 @@ class ObjectDetector
 
 		/*
 		 * retention of depth image, stored every time a goal is sent to darknet_ros for detection
+		 * in order to match the depth to the correlated rgb image
 		 */
 		cv_bridge::CvImagePtr oldDepth_;
 
-		/*
-		 * threshholding function, also keeps track of "successful" addition with int& c
-		 * not really used
-		 */
-		float thresh(const unsigned char value_, int& counter_, const float threshval_)
-		{
-			if((float) (value_ / 255.0) > threshval_) 
-			{
-				counter_++;
-				return (float) (value_ / 255.0);
-			}
-			else return 0.0;
-		}
-
-		/*
-		 * mean function, returns the mean of three same-type values and is mean to look at
+		/** @brief Mean function, returns the mean of three same-type values and is mean to look at
 		 */
 		template<typename T>
-			inline T mean(T x, T y, T z)
+			inline T mean(const T x, const T y, const T z)
 			{
 				if(((x < y) && (x > z)) || ((x < z) && (x > y))) return x;
 				else if(((y < x) && (y > z)) || ((y < z) && (y > x))) return y;
@@ -270,8 +243,8 @@ class ObjectDetector
 				else return (x + y + z) / (T) 3;
 			}
 
-		/*
-		 * draw function
+		/** @brief Draw function, draws bounding boxes and information labels on each detected object
+		 *
 		 * might as well have a separate function for it to avoid a mess
 		 */
 		void draw(cv_bridge::CvImagePtr& img_, const darknet_ros_msgs::BoundingBox& box_, int counter_)
@@ -286,8 +259,7 @@ class ObjectDetector
 			return;
 		}
 
-		/*
-		 * reshapes the boundingbox subset of img_ into a 1D array in obj_
+		/** @brief Reshapes the boundingbox subset of img_ into a 1D array in obj_
 		 */
 		void reshape(cv::Mat& obj_, const cv_bridge::CvImagePtr& img_, const darknet_ros_msgs::BoundingBox& box_)
 		{
@@ -304,19 +276,17 @@ class ObjectDetector
 			return;
 		}
 
-		/*
-		 * maps depth image coordinates into meters
-		 * hopefully
+		/** @brief Maps depth image coordinates into meters
 		 */
 		void publishXYZ(const darknet_ros_msgs::BoundingBox& box_, double zd)
 		{
 			double xd = ((double) box_.xmin) + (((double) (box_.xmax - box_.xmin)) / 2);
 			double yd = ((double) box_.ymin) + (((double) (box_.ymax - box_.ymin)) / 2);
-			// x,y might be without the zd multiplication, unsure
-			// change for image_geometry
+
 			cupPos_.x = (xd - cameraInfo_.K[2] - cameraInfo_.P[3]) * zd / cameraInfo_.K[0];
 			cupPos_.y = (yd - cameraInfo_.K[5] - cameraInfo_.P[7]) * zd / cameraInfo_.K[4];
 			cupPos_.z = zd; //depth
+
 			cupPublisher_.publish(cupPos_);
 
 			return;
