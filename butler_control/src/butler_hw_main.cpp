@@ -39,6 +39,7 @@
 #include <ros_control_boilerplate/generic_hw_control_loop.h>
 #include <butler_control/butler_hw_interface.h>
 
+
 int main(int argc, char** argv)
 {
   ros::init(argc, argv, "butler_hw_interface");
@@ -57,6 +58,7 @@ int main(int argc, char** argv)
   // Start the control loop
   ros_control_boilerplate::GenericHWControlLoop control_loop(nh, butler_hw_interface);
 
+  std::cout << "Control loop started." << std::endl;
   // Wait until shutdown signal recieved
   ros::waitForShutdown();
 
