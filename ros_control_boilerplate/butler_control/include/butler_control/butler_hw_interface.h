@@ -55,6 +55,9 @@ public:
    */
   ButlerHWInterface(ros::NodeHandle& nh, urdf::Model* urdf_model = NULL);
 
+  /** \brief Initialize the hardware interface */
+  virtual void init();
+
   /** \brief Read the state from the robot hardware. */
   virtual void read(ros::Duration &elapsed_time);
 
