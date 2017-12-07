@@ -157,7 +157,8 @@ Frame toframe2(Header header, const uint8_t *in_data, size_t in_size) {
 // range is 200
 // 0 = -180 degrees
 // 200 = 180 degrees
-// avrunda neråt
+// avrunda neråt vid pos
+// avrunda uppåt vid neg
 
 void ButlerHWInterface::write(ros::Duration &elapsed_time)
 {
@@ -179,37 +180,52 @@ void ButlerHWInterface::write(ros::Duration &elapsed_time)
   out_ticks[7]=0;
   // Process data
   // Convert to whole numbers
+
   for (size_t joint_id = 0; joint_id < 4; ++joint_id)
   {
-    //std::cout << "joint:" << joint_id << std::endl;
+    std::cout << "joint:" << joint_id << std::endl;
+    std::cout << "radians:" << joint_position_command_[joint_id] << std::endl;
     // Motor positions have a range between -pi/2 and pi/2
     // 180 degrees rotation limit
     // 0.01745329252 radians per degree
     degrees = rest_degrees = joint_position_command_[joint_id] / 0.01745329252;
-    //std::cout << "degrees " << degrees << std::endl;
-    
+    std::cout << "degrees " << degrees << std::endl;
     // 1,8 degrees per tick
+    // round down since it is positive
     rounded = floor(degrees / 1.8);
-    //std::cout << "rounded: " << rounded << std::endl;
-    rest_degrees = degrees - (double)(rounded * 1.8);
-    // Make it positive
-    rounded += 100;
-    ticks[joint_id] = (uint8_t)rounded;
+    std::cout << "rounded ticks: " << rounded << std::endl;
+    rest_degrees = degrees - (rounded * 1.8);
 
     // create micro ticks
     // 32 micros ticks on a real tick
     // 1,8/32 = 0.05625
-    micro_ticks[joint_id] = floor(rest_degrees / 0.05625);
-    //std::cout << "rest degrees: " << rest_degrees << std::endl;
+    if (degrees >= 0) // Positive radians
+    {
+      std::cout << "+ angle" << std::endl;
+      micro_ticks[joint_id] = floor(rest_degrees / 0.05625);
+    }
+    else // Negative radians
+    {
+      std::cout << "- angle" << std::endl;
+      micro_ticks[joint_id] = ceil(rest_degrees / 0.05625);
+    }
+    
+    // Make between 0 - 200 instead of -100 - 100
+    rounded += 100;
+    ticks[joint_id] = (uint8_t)rounded;
+
+    std::cout << "rest degrees: " << rest_degrees << std::endl;
 
     //Print
     //std::cout << (int)ticks[joint_id] << std::endl;
     //std::cout << (int)micro_ticks[joint_id] << std::endl;
 
-
 //compare and see if we have atleast one whole tick we want to send
     tick_diff=0;
     tick_diff= abs(ticks[joint_id]-current_ticks[joint_id]);
+
+    //std::cout << "total degrees: " << ((ticks[joint_id] * 1.8) + (micro_ticks[joint_id] * 0.05625) - 180) << std::endl << std::endl;
+
       if (tick_diff>=1){
         moved=true;
         if (ticks[joint_id]>current_ticks[joint_id]){          
@@ -281,9 +297,8 @@ if(moved){
   // sim_hw_interface.cpp IN THIS PACKAGE
   //
   // DUMMY PASS-THROUGH CODE
-  /*
-  for (std::size_t joint_id = 0; joint_id < num_joints_; ++joint_id)
-    joint_position_[joint_id] = joint_position_command_[joint_id];*/
+  //for (std::size_t joint_id = 0; joint_id < num_joints_; ++joint_id)
+  //  joint_position_[joint_id] = joint_position_command_[joint_id];
   // END DUMMY CODE
   //
   // ----------------------------------------------------
