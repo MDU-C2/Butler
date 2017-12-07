@@ -60,7 +60,6 @@ namespace butler_control
   boost::shared_ptr<DriverInterface> g_driver;
 
   ButlerHWInterface::ButlerHWInterface(ros::NodeHandle &nh, urdf::Model *urdf_model)
-
   : ros_control_boilerplate::GenericHWInterface(nh, urdf_model)
   {
     ROS_INFO_NAMED("butler_hw_interface", "ButlerHWInterface Ready.");
@@ -137,21 +136,21 @@ namespace butler_control
 
 
 
-Frame toframe2(Header header, const uint8_t *in_data, size_t in_size) {
-  Frame frame(header);
+      Frame toframe2(Header header, const uint8_t *in_data, size_t in_size) {
+        Frame frame(header);
   //Copies can_data bytes to frame.data
-  if (header.isValid())
-  {
-      if (in_size > 8) 
-          return MsgHeader(0xfff);    
-      for (size_t i = 0; i < in_size; i++)
-      {
-          frame.data[i] = in_data[i];
+        if (header.isValid())
+        {
+          if (in_size > 8) 
+            return MsgHeader(0xfff);    
+          for (size_t i = 0; i < in_size; i++)
+          {
+            frame.data[i] = in_data[i];
+          }
+          frame.dlc = in_size;
+        }
+        return frame; 
       }
-      frame.dlc = in_size;
-  }
-  return frame; 
-}
 
 // -100 - 100
 // range is 200
@@ -159,75 +158,69 @@ Frame toframe2(Header header, const uint8_t *in_data, size_t in_size) {
 // 200 = 180 degrees
 // avrunda neråt
 
-void ButlerHWInterface::write(ros::Duration &elapsed_time)
-{
+      void ButlerHWInterface::write(ros::Duration &elapsed_time)
+      {
   // Safety
         enforceLimits(elapsed_time);
 
 
   // Process data
-  // Convert to whole numbers
-  double degrees;
-  uint8_t ticks[4];
-  uint8_t micro_ticks[4];
-  int rounded;
-  double rest_degrees;
-  uint8_t out_ticks[8];
-  for (size_t joint_id = 0; joint_id < 4; ++joint_id)
-  {
-    std::cout << "joint:" << joint_id << std::endl;
+  // Convert to whole numbers (signed short int-16)
+        
+        for (size_t joint_id = 0; joint_id < 4; ++joint_id)
+        {
     // Motor positions have a range between -pi/2 and pi/2
     // 180 degrees rotation limit
     // 0.01745329252 radians per degree
-    degrees = rest_degrees = joint_position_command_[joint_id] / 0.01745329252;
-    std::cout << "degrees " << degrees << std::endl;
-    
+          degrees[joint_id] = joint_position_command_[joint_id] / 0.01745329252;
+
     // 1,8 degrees per tick
-    rounded = floor(degrees / 1.8);
-    std::cout << "rounded: " << rounded << std::endl;
-    rest_degrees = degrees - (double)(rounded * 1,8);
+          temp = floor(degrees[joint_id] / 1.8);
     // Make it positive
-    rounded += 100;
-    ticks[joint_id] = (uint8_t)rounded;
+          temp += 100;
+          ticks[joint_id] = (uint8_t)temp;
 
-    // create micro ticks
-    // 32 micros ticks on a real tick
-    // 1,8/32 = 0.05625
-    micro_ticks[joint_id] = floor(rest_degrees / 0.05625);
-    std::cout << "rest degrees: " << rest_degrees << std::endl;
+          //difference between what we have sent and what we want
+          uint8_t tick_diff= abs(ticks[joint_id]-current_ticks[joint_id]);
+          if (tick_diff>=1){
+            moved=true;
+            std::cout<<"Moving joint " << joint_id << ". Ticks: " << (int)tick_diff<<"."<< std::endl;
+            if (ticks[joint_id]>current_ticks[joint_id]){
+              current_ticks[joint_id]=current_ticks[joint_id]+tick_diff;
+              msg_ticks[joint_id]=tick_diff;
+            }else if (ticks[joint_id]<current_ticks[joint_id])
+            {
+              current_ticks[joint_id]=current_ticks[joint_id]-tick_diff;
+              msg_ticks[joint_id]=-tick_diff;
+            }
+          }
 
-    //Print
-    std::cout << (int)ticks[joint_id] << std::endl;
-    std::cout << (int)micro_ticks[joint_id] << std::endl;
 
-    //Move to same array
-    out_ticks[joint_id*2] = ticks[joint_id];
-    out_ticks[joint_id*2+1] = micro_ticks[joint_id];
-
-    uint8_t tick_diff= abs(ticks[joint_id]-current_ticks[joint_id]);
-      if (tick_diff>=1){
-        moved=true;
-        std::cout<<"Moving joint " << joint_id << ". Ticks: " << (int)tick_diff<<"."<< std::endl;
-        if (ticks[joint_id]>current_ticks[joint_id]){
-          current_ticks[joint_id]=current_ticks[joint_id]+tick_diff;
-          msg_ticks[joint_id]=tick_diff;
-        }else if (ticks[joint_id]<current_ticks[joint_id])
-        {
-          current_ticks[joint_id]=current_ticks[joint_id]-tick_diff;
-          msg_ticks[joint_id]=-tick_diff;
+    // create micro [joint_id]
+    /*
+          std::cout<<(int)ticks[joint_id]<<std::endl;*/
         }
-      }
-
-  }
-if(moved){
+        if (moved){
   // Convert to frame
-  Frame *frame = new Frame;
-  Header header = *frame = toframe2(header, out_ticks, 8);
+          Frame *frame = new Frame;
+          Header header = *frame = toframe2(header, msg_ticks, 4);
 
   // Send data.
-  bcm.startTX(boost::chrono::duration<double>(5000000), header, 1, frame);
-}
+          double intime = atof("5000000");
 
+          boost::chrono::duration<double> temptime(intime);
+
+          long long usec = boost::chrono::duration_cast<boost::chrono::microseconds>(temptime).count();
+/*
+        std::cout << usec << std::endl;*/
+  //if(bcm.startTX(boost::chrono::duration<double>(intime), header, 8, frame))
+  //{
+          if (*frame == MsgHeader(0xfff))
+          {
+            std::cout << "you have been bamboozled" << std::endl;
+          }
+          bcm.startTX(boost::chrono::duration_cast<boost::chrono::microseconds>(temptime), header, 1, frame);
+        }
   // ----------------------------------------------------
   // ----------------------------------------------------
   // ----------------------------------------------------
@@ -239,8 +232,7 @@ if(moved){
   // sim_hw_interface.cpp IN THIS PACKAGE
   //
   // DUMMY PASS-THROUGH CODE
-  /*
-  for (std::size_t joint_id = 0; joint_id < num_joints_; ++joint_id)
+  /*for (std::size_t joint_id = 0; joint_id < num_joints_; ++joint_id)
     joint_position_[joint_id] = joint_position_command_[joint_id];*/
   // END DUMMY CODE
   //

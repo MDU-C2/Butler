@@ -67,6 +67,7 @@ void GenericHWInterface::init()
 {
   num_joints_ = joint_names_.size();
 
+  std::cout << "RUNNING INIT IN generic_hw_interface" << std::endl;
   // Status
   joint_position_.resize(num_joints_, 0.0);
   joint_velocity_.resize(num_joints_, 0.0);

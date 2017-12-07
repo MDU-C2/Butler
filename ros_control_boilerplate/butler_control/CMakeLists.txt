@@ -1,5 +1,6 @@
 include_directories(
   include/
+  #../../../ros_canopen/socketcan_interface/include
 )
 
 # Butler Hardware Interface

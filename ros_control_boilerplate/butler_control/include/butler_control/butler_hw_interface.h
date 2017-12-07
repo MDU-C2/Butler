@@ -46,27 +46,41 @@ namespace butler_control
 {
 
 /// \brief Hardware interface for a robot
-class ButlerHWInterface : public ros_control_boilerplate::GenericHWInterface
-{
-public:
+  class ButlerHWInterface : public ros_control_boilerplate::GenericHWInterface
+  {
+  public:
   /**
    * \brief Constructor
    * \param nh - Node handle for topics.
    */
-  ButlerHWInterface(ros::NodeHandle& nh, urdf::Model* urdf_model = NULL);
+    ButlerHWInterface(ros::NodeHandle& nh, urdf::Model* urdf_model = NULL);
 
   /** \brief Initialize the hardware interface */
-  virtual void init();
+    void init();
 
   /** \brief Read the state from the robot hardware. */
-  virtual void read(ros::Duration &elapsed_time);
+    void read(ros::Duration &elapsed_time);
 
   /** \brief Write the command to the robot hardware. */
-  virtual void write(ros::Duration &elapsed_time);
+    void write(ros::Duration &elapsed_time);
 
   /** \breif Enforce limits for all values before writing */
-  virtual void enforceLimits(ros::Duration &period);
+    void enforceLimits(ros::Duration &period);
+  private:
+ /* BCMsocket bcm;
+  Header header;
+  boost::shared_ptr<DriverInterface> g_driver;*/
+    int counter;
 
+    uint8_t current_ticks[4]={100,100,100,100};
+    uint8_t current_micro_ticks[4]={0,0,0,0};
+    short int degrees[4];
+    uint8_t ticks[4];
+    uint8_t micro_ticks[4];
+    uint8_t msg_ticks[4];
+    uint8_t msg_micro_ticks[4];
+    int temp;
+    bool moved=false;
 };  // class
 
 }  // namespace
