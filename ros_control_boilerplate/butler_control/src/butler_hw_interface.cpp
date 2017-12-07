@@ -162,30 +162,36 @@ Frame toframe2(Header header, const uint8_t *in_data, size_t in_size) {
 void ButlerHWInterface::write(ros::Duration &elapsed_time)
 {
   // Safety
-        enforceLimits(elapsed_time);
+  enforceLimits(elapsed_time);
 
-
+  //reset variables
+  moved=false;
+  for (int i = 0; i<4; i++){
+    ticks[i]=100;
+    msg_ticks[i]=100;
+    micro_ticks[i]=0;
+    msg_micro_ticks[i]=0;
+    out_ticks[i*2]=100;
+  }
+  out_ticks[1]=0;
+  out_ticks[3]=0;
+  out_ticks[5]=0;
+  out_ticks[7]=0;
   // Process data
   // Convert to whole numbers
-  double degrees;
-  uint8_t ticks[4];
-  uint8_t micro_ticks[4];
-  int rounded;
-  double rest_degrees;
-  uint8_t out_ticks[8];
   for (size_t joint_id = 0; joint_id < 4; ++joint_id)
   {
-    std::cout << "joint:" << joint_id << std::endl;
+    //std::cout << "joint:" << joint_id << std::endl;
     // Motor positions have a range between -pi/2 and pi/2
     // 180 degrees rotation limit
     // 0.01745329252 radians per degree
     degrees = rest_degrees = joint_position_command_[joint_id] / 0.01745329252;
-    std::cout << "degrees " << degrees << std::endl;
+    //std::cout << "degrees " << degrees << std::endl;
     
     // 1,8 degrees per tick
     rounded = floor(degrees / 1.8);
-    std::cout << "rounded: " << rounded << std::endl;
-    rest_degrees = degrees - (double)(rounded * 1,8);
+    //std::cout << "rounded: " << rounded << std::endl;
+    rest_degrees = degrees - (double)(rounded * 1.8);
     // Make it positive
     rounded += 100;
     ticks[joint_id] = (uint8_t)rounded;
@@ -194,38 +200,74 @@ void ButlerHWInterface::write(ros::Duration &elapsed_time)
     // 32 micros ticks on a real tick
     // 1,8/32 = 0.05625
     micro_ticks[joint_id] = floor(rest_degrees / 0.05625);
-    std::cout << "rest degrees: " << rest_degrees << std::endl;
+    //std::cout << "rest degrees: " << rest_degrees << std::endl;
 
     //Print
-    std::cout << (int)ticks[joint_id] << std::endl;
-    std::cout << (int)micro_ticks[joint_id] << std::endl;
+    //std::cout << (int)ticks[joint_id] << std::endl;
+    //std::cout << (int)micro_ticks[joint_id] << std::endl;
 
-    //Move to same array
-    out_ticks[joint_id*2] = ticks[joint_id];
-    out_ticks[joint_id*2+1] = micro_ticks[joint_id];
 
-    uint8_t tick_diff= abs(ticks[joint_id]-current_ticks[joint_id]);
+//compare and see if we have atleast one whole tick we want to send
+    tick_diff=0;
+    tick_diff= abs(ticks[joint_id]-current_ticks[joint_id]);
       if (tick_diff>=1){
         moved=true;
-        std::cout<<"Moving joint " << joint_id << ". Ticks: " << (int)tick_diff<<"."<< std::endl;
-        if (ticks[joint_id]>current_ticks[joint_id]){
+        if (ticks[joint_id]>current_ticks[joint_id]){          
+          std::cout<<"Moving joint " << joint_id << ". Ticks: " << (int)tick_diff<<"."<< std::endl;
           current_ticks[joint_id]=current_ticks[joint_id]+tick_diff;
-          msg_ticks[joint_id]=tick_diff;
+          msg_ticks[joint_id]=100+tick_diff;
         }else if (ticks[joint_id]<current_ticks[joint_id])
         {
+          std::cout<<"Moving joint " << joint_id << ". Ticks: -" << (int)tick_diff<<"."<< std::endl;
           current_ticks[joint_id]=current_ticks[joint_id]-tick_diff;
-          msg_ticks[joint_id]=-tick_diff;
+          msg_ticks[joint_id]=100-tick_diff;
         }
+        //Move to an array where we gather both ticks and micro ticks
+        out_ticks[joint_id*2] = msg_ticks[joint_id];
       }
+//compare and see if we have atleast one whole micro_tick we want to send
+    tick_diff=0;
+    tick_diff= abs(micro_ticks[joint_id]-current_micro_ticks[joint_id]);
+      if (tick_diff>=1){
+        moved=true;
+        if (micro_ticks[joint_id]>current_micro_ticks[joint_id]){
+        std::cout<<"Moving joint " << joint_id << ". Micro-Ticks: " << (int)tick_diff<<"."<< std::endl;
+          current_micro_ticks[joint_id]=current_micro_ticks[joint_id]+tick_diff;
+          msg_micro_ticks[joint_id]=tick_diff;
+        }else if (micro_ticks[joint_id]<current_micro_ticks[joint_id])
+        {
+        std::cout<<"Moving joint " << joint_id << ". Micro-Ticks: -" << (int)tick_diff<<"."<< std::endl;
+          current_micro_ticks[joint_id]=current_micro_ticks[joint_id]-tick_diff;
+          msg_ticks[joint_id]--;
+          msg_micro_ticks[joint_id]=32-tick_diff;
+          out_ticks[joint_id*2]=msg_ticks[joint_id];
+        }
+        //Move to an array where we gather both ticks and micro ticks
+        out_ticks[joint_id*2+1] = msg_micro_ticks[joint_id];
+      } 
 
   }
+
 if(moved){
   // Convert to frame
   Frame *frame = new Frame;
+  std::cout<<"Sending these vals over CAN:     ";
+  for (int i=0;i<8;i++)
+  {
+     std::cout<< (int)out_ticks[i]<<"  ";
+  }
+  std::cout<<std::endl;
   Header header = *frame = toframe2(header, out_ticks, 8);
 
   // Send data.
   bcm.startTX(boost::chrono::duration<double>(5000000), header, 1, frame);
+  std::cout<<"The expected state of the motors are: ";
+  for (int i=0;i<4;i++)
+  {
+     std::cout<< (int)current_ticks[i]<<"  "<< (int)current_micro_ticks[i]<<"  ";
+  }
+  std::cout<<std::endl;
+  std::cout<<std::endl;
 }
 
   // ----------------------------------------------------
