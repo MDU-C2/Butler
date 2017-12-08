@@ -3,7 +3,7 @@ yolo_model:
   config_file:
     name: butler_cups.cfg
   weight_file:
-    name: butler_cups.weights
+    name: cups_60000.weights
   threshold:
     value: 0.2
   detection_classes:

@@ -9,5 +9,4 @@ images/
 labels/
 docs/
 train.txt
-^darknet$
 tags

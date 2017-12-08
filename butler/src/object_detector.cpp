@@ -3,13 +3,8 @@
 const std::string Depth_Topic_		= "/camera/depth_registered/image_raw";
 const std::string RGB_Topic_ 		= "/usb_cam/image_raw";
 const std::string Action_Server_ 	= "/darknet_ros/check_for_objects";
+const std::string Camera_Info_		= "/camera/depth/camera_info";
 const std::string Cup_Position_		= "/object_detector/cup_position";
-
-/* 
- * TODO
- * extract distance to detected object
- * 3d coordinates???
- */
 
 int main(int argc, char** argv)
 {
@@ -23,7 +18,7 @@ int main(int argc, char** argv)
 	{
 		r.sleep();
 		ros::spinOnce();
-		detector.sendGoal(0);
+		detector.sendGoal(ObjectID::Cup);
 	}
 
 	return 0;
