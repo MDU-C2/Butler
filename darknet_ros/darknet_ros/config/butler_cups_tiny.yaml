@@ -1,0 +1,11 @@
+yolo_model:
+
+  config_file:
+    name: butler_tiny.cfg
+  weight_file:
+    name: butler_ref_900.weights
+  threshold:
+    value: 0.2
+  detection_classes:
+    names:
+      - cup

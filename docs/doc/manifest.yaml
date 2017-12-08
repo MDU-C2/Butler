@@ -1,0 +1,26 @@
+actions: []
+authors: ''
+brief: ''
+bugtracker: ''
+depends:
+- nav_msgs
+- catkin
+- roscpp
+- sensor_msgs
+- actionlib
+- message_runtime
+- std_msgs
+- tf
+- geometry_msgs
+- darknet_ros_msgs
+- message_generation
+- rospy
+- actionlib_msgs
+description: The butler package
+license: TODO
+maintainers: ventov <ventov@todo.todo>
+msgs: []
+package_type: package
+repo_url: ''
+srvs: []
+url: ''
