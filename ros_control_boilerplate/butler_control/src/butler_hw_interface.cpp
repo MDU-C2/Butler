@@ -91,7 +91,7 @@ namespace butler_control
       {
         GenericHWInterface::init();
 
-        std::string canport = "vcan0";
+        std::string canport = "can0";
 
   // Init if not inited already 
         bcm.init(canport);
@@ -162,8 +162,11 @@ Frame toframe2(Header header, const uint8_t *in_data, size_t in_size) {
 
 void ButlerHWInterface::write(ros::Duration &elapsed_time)
 {
-  // Safety
-  enforceLimits(elapsed_time);
+
+	if (ros::Time::now()>time_last_msg+ros::Duration(0.5)){
+	time_last_msg=ros::Time::now();
+  	// Safety
+//  enforceLimits(elapsed_time);
 
   //reset variables
   moved=false;
@@ -312,7 +315,10 @@ if(moved){
   // ----------------------------------------------------
   // ----------------------------------------------------
   // ----------------------------------------------------
-      }
+}
+//std::cout<<"looped once."<<std::endl;
+}
+
 
       void ButlerHWInterface::enforceLimits(ros::Duration &period)
       {

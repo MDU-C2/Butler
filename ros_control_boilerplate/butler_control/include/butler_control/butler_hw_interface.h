@@ -70,7 +70,8 @@ namespace butler_control
  /* BCMsocket bcm;
   Header header;
   boost::shared_ptr<DriverInterface> g_driver;*/
-    int counter;
+	ros::Time time_last_msg;
+	int counter;
     uint8_t tick_diff = 0;
     uint8_t current_ticks[4]={100,100,100,100};
     uint8_t current_micro_ticks[4]={0,0,0,0};
