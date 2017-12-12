@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<launch>
+	<node name="object_detector" pkg="butler" type="object_detector" output="screen"/>
+	<include file="$(find darknet_ros)/launch/butler_detector.launch"/>
+	<include file="$(find usb_cam)/launch/rgb_topic.launch"/>
+	<include file="$(find astra_launch)/launch/astra.launch"/>
+</launch>
