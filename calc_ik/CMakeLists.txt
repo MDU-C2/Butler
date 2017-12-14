@@ -127,6 +127,7 @@ DEPENDS orocos_kdl
 ## Your package locations should be listed before other locations
 include_directories(
 # include
+##${butler}
 ${catkin_INCLUDE_DIRS}
 )
 
@@ -207,6 +208,11 @@ ${catkin_INCLUDE_DIRS}
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
+
+
+##set(SOURCES ${butler}/object_detector.cpp ${butler}/object_detector.h)
+##add_executable(obj_detect ${SOURCES})
+
 
 add_executable(butler_ik2 src/butler_ik2.cpp)
 target_link_libraries(butler_ik2

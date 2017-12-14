@@ -80,6 +80,7 @@ namespace butler_control
   //Frame Listener
   void frame_reader(const can::Frame &f);
 
+  ros::Time time_last_msg;
   uint8_t tick_diff = 0;
   uint8_t current_ticks[4]={100,100,100,100};
   uint8_t current_micro_ticks[4]={0,0,0,0};

@@ -120,6 +120,7 @@ catkin_package(
 	#  LIBRARIES butler
 	CATKIN_DEPENDS actionlib actionlib_msgs geometry_msgs message_generation nav_msgs roscpp rospy std_msgs tf darknet_ros_msgs sensor_msgs
 	#  DEPENDS system_lib
+	LIBRARIES butler
 	)
 
 ###########
@@ -138,6 +139,12 @@ include_directories(
 #   src/${PROJECT_NAME}/butler.cpp
 # )
 
+add_library(butler src/object_detector.cpp)
+
+set(BUTLER_SOURCES
+	object_detector.cpp)
+#add_library(object_detector ${OBJECT_DETECTOR_SOURCES})
+
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
@@ -148,8 +155,8 @@ include_directories(
 ## The recommended prefix ensures that target names across packages don't collide
 # add_executable(${PROJECT_NAME}_node src/butler_node.cpp)
 
-add_executable(object_detector src/object_detector.cpp)
-target_link_libraries(object_detector ${catkin_LIBRARIES})
+#add_executable(object_detector src/object_detector.cpp)
+target_link_libraries(butler ${catkin_LIBRARIES})
 
 
 ## Rename C++ executable without prefix
@@ -161,7 +168,8 @@ target_link_libraries(object_detector ${catkin_LIBRARIES})
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-add_dependencies(object_detector darknet_ros_msgs_generate_messages_cpp)
+add_dependencies(butler darknet_ros_msgs_generate_messages_cpp)
+
 
 ## Specify libraries to link a library or executable target against
 # target_link_libraries(${PROJECT_NAME}_node
@@ -175,6 +183,14 @@ add_dependencies(object_detector darknet_ros_msgs_generate_messages_cpp)
 # all install targets should use catkin DESTINATION variables
 # See http://ros.org/doc/api/catkin/html/adv_user_guide/variables.html
 
+
+install(TARGETS butler
+	ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+	LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+	RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION})
+
+install(DIRECTORY include/${PROJECT_NAME}/
+	DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION})
 ## Mark executable scripts (Python etc.) for installation
 ## in contrast to setup.py, you can choose the destination
 # install(PROGRAMS
