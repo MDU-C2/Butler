@@ -41,6 +41,13 @@
 #define BUTLER_CONTROL__BUTLER_HW_INTERFACE_H
 
 #include <ros_control_boilerplate/generic_hw_interface.h>
+#include <socketcan_interface/bcm.h>
+#include <socketcan_interface/string.h>
+#include <socketcan_interface/socketcan.h>
+#include <socketcan_interface/threading.h>
+#include <boost/unordered_set.hpp>
+#include <boost/exception/diagnostic_information.hpp>
+#include <boost/make_shared.hpp>
 
 namespace butler_control
 {
@@ -66,24 +73,22 @@ namespace butler_control
 
   /** \breif Enforce limits for all values before writing */
     void enforceLimits(ros::Duration &period);
+
   private:
- /* BCMsocket bcm;
-  Header header;
-  boost::shared_ptr<DriverInterface> g_driver;*/
-    int counter;
-    uint8_t tick_diff = 0;
-    uint8_t current_ticks[4]={100,100,100,100};
-    uint8_t current_micro_ticks[4]={0,0,0,0};
-    short int degrees;
-    uint8_t ticks[4]={100,100,100,100};
-    uint8_t micro_ticks[4]={0,0,0,0};
-    uint8_t msg_ticks[4]={100,100,100,100};
-    uint8_t msg_micro_ticks[4]={0,0,0,0};
-    int temp;
-    bool moved=false;
-    int rounded;
-    double rest_degrees;
-    uint8_t out_ticks[8]={100,0,100,0,100,0,100,0};
+
+  /** \brief Read the state from the robot CAN bus. */
+  //Frame Listener
+  void frame_reader(const can::Frame &f);
+
+  uint8_t tick_diff = 0;
+  uint8_t current_ticks[4]={100,100,100,100};
+  uint8_t current_micro_ticks[4]={0,0,0,0};
+  uint8_t ticks[4]={100,100,100,100};
+  uint8_t micro_ticks[4]={0,0,0,0};
+  uint8_t msg_ticks[4]={100,100,100,100};
+  uint8_t msg_micro_ticks[4]={0,0,0,0};
+  bool moved=false;
+  uint8_t out_ticks[8]={100,0,100,0,100,0,100,0};
 };  // class
 
 }  // namespace

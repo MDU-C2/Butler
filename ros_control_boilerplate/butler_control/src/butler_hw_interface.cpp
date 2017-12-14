@@ -38,26 +38,17 @@
 */
 
 #include <butler_control/butler_hw_interface.h>
-#include <boost/unordered_set.hpp>
-#include <boost/exception/diagnostic_information.hpp>
-#include <boost/make_shared.hpp>
-#include <socketcan_interface/bcm.h>
-#include <socketcan_interface/string.h>
-#include <socketcan_interface/socketcan.h>
+
 
 using namespace can;
 
 namespace butler_control
 {
 
-  union can_data{
-    uint8_t val[8];
-    unsigned char bytes_unsigned[8];
-  };
-
   BCMsocket bcm;
   Header header;
-  boost::shared_ptr<DriverInterface> g_driver;
+  boost::shared_ptr<can::ThreadedSocketCANInterface> driver = boost::make_shared<can::ThreadedSocketCANInterface> ();
+  can::CommInterface::FrameListener::Ptr frame_listener;
 
   ButlerHWInterface::ButlerHWInterface(ros::NodeHandle &nh, urdf::Model *urdf_model)
 
@@ -66,80 +57,61 @@ namespace butler_control
     ROS_INFO_NAMED("butler_hw_interface", "ButlerHWInterface Ready.");
   }
 
-  Header toheader(const std::string& s) {
-    if (s.empty() || s.size() > 4)
-          return MsgHeader(0xfff); // invalid
-
-        std::stringstream stream;
-        stream << std::hex << s;
-        unsigned int h = 0;
-        stream >> h;
-        return Header(h & Header::ID_MASK, h & Header::EXTENDED_MASK,
-          h & Header::RTR_MASK, h & Header::ERROR_MASK);
-      }
-
 //Frame Listener
-      void frame_reader(const Frame &f)
-      {
-  //Get values
+void ButlerHWInterface::frame_reader(const Frame &f)
+{
+  //Uncomment this code if reading data and using it to update the motor positions
 
-  //Set values
+  // Get values
+  // Same data structure as write to CAN bus
+  //uint8_t output[8];
+  //for(int i=0; i < f.dlc; ++i){
+  //  output[i] = (uint8_t)f.data[i];
+  //}
 
-      }
+  // Update position values with return values from the CAN bus
+  //for (int joint_id = 0; joint_id < 4; ++joint_id)
+  //{
+    //joint_position_[joint_id] = ((((int)output[joint_id*2] - 100) * 1.8) + (((int)output[joint_id*2+1]) * 0.05625)) * 0.01745329252;
 
-      void ButlerHWInterface::init()
-      {
-        GenericHWInterface::init();
+    //std::cout << "All in one: " << joint_position_[joint_id] << std::endl;
+  //}
+  std::cout << "Recieved data" << std::endl;
+}
 
-        std::string canport = "vcan0";
+void ButlerHWInterface::init()
+{
+  GenericHWInterface::init();
 
-  // Init if not inited already 
-        bcm.init(canport);
+  // vcan0 is a virtual CAN
+  // change to a real port if not a virtual one
+  std::string canport = "vcan0";
+
+  // Init bcm for sending data
+  bcm.init(canport);
 
   // Set the CAN header
-        std::string head_str = "5#";
-        header = toheader(head_str);
-        counter = 0;
-        std::cout << "init done" << std::endl;
+  std::string head_str = "5#";
+  header = toheader(head_str);
+
   //Socketcan listener
-/*   g_driver = boost::make_shared<SocketCANInterface>();
-  CommInterface::FrameListener::Ptr frame_printer = g_driver->createMsgListener(frame_reader);
+  if(!driver->init(canport, false)){
+    std::cout << "ButlerHWInterface init ERROR" << std::endl;
+  } 
+  // Set method to handle the returned CAN messages
+  frame_listener = driver->createMsgListener(CommInterface::FrameDelegate(this, &ButlerHWInterface::frame_reader));
 
-  if(!g_driver->init(canport, false)){
-  } */
+  std::cout << "ButlerHWInterface init done" << std::endl;
+}
 
-  //g_driver->run();
+void ButlerHWInterface::read(ros::Duration &elapsed_time)
+{
 
-  //g_driver->shutdown();
-  //g_driver.reset();
-
-  // Dunno if this is needed
-  // Resize vectors
-  //joint_position_prev_.resize(num_joints_, 0.0);
-      }
-
-      void ButlerHWInterface::read(ros::Duration &elapsed_time)
-      {
-  // Error reporting 
-
-  // if (error) CRASH!
-
-  // ----------------------------------------------------
-  // ----------------------------------------------------
-  // ----------------------------------------------------
-  //
-  // FILL IN YOUR READ COMMAND FROM USB/ETHERNET/ETHERCAT/SERIAL ETC HERE
-  //
-  // ----------------------------------------------------
-  // ----------------------------------------------------
-  // ----------------------------------------------------
-      }
-
-
+}
 
 Frame toframe2(Header header, const uint8_t *in_data, size_t in_size) {
   Frame frame(header);
-  //Copies can_data bytes to frame.data
+  // Copies data bytes to frame.data
   if (header.isValid())
   {
       if (in_size > 8) 
@@ -153,19 +125,51 @@ Frame toframe2(Header header, const uint8_t *in_data, size_t in_size) {
   return frame; 
 }
 
-// -100 - 100
-// range is 200
-// 0 = -180 degrees
-// 200 = 180 degrees
-// avrunda neråt vid pos
-// avrunda uppåt vid neg
+// Convert from radians to ticks and microticks
+uint8_t * toticks(double radians)
+{ 
+  uint8_t * ticks = new uint8_t [2];
+  // Motor positions have a range between -pi/2 and pi/2
+  // 180 degrees rotation limit
+  // 0.01745329252 radians per degree
+  int degrees = radians / 0.01745329252;
 
+  // 1,8 degrees per tick
+  // round down for calculationg microticks
+  int rounded = floor(degrees / 1.8);
+  int rest_degrees = degrees - (rounded * 1.8);
+
+  // create micro ticks 32 micros ticks on a real tick 1.8/32 = 0.05625
+  if (degrees >= 0) // Positive degrees
+  {
+    ticks[1] = floor(rest_degrees / 0.05625);
+  }
+  else // Negative degrees
+  {
+    ticks[1] = ceil(rest_degrees / 0.05625);
+  }
+
+  // Make between 0 - 200 instead of -100 - 100
+  rounded += 100;
+  ticks[0] = (uint8_t)rounded;
+
+  return ticks;
+}
+
+// CAN message structure
+//  Byte  0   1   2   3   4   5   6   7
+//  Motor 1   1   2   2   3   3   4   4
+//        T   mT  T   mT  T   mT  T   mT
+// T = Ticks
+// mT = microTicks
+
+// Sends the joint_position_commands to the arm over CAN
 void ButlerHWInterface::write(ros::Duration &elapsed_time)
 {
   // Safety
   enforceLimits(elapsed_time);
 
-  //reset variables
+  // Reset variables
   moved=false;
   for (int i = 0; i<4; i++){
     ticks[i]=100;
@@ -178,144 +182,89 @@ void ButlerHWInterface::write(ros::Duration &elapsed_time)
   out_ticks[3]=0;
   out_ticks[5]=0;
   out_ticks[7]=0;
+
   // Process data
   // Convert to whole numbers
-
+  uint8_t * temp_ticks;
   for (size_t joint_id = 0; joint_id < 4; ++joint_id)
   {
-    //std::cout << "joint:" << joint_id << std::endl;
-    //std::cout << "radians:" << joint_position_command_[joint_id] << std::endl;
-    // Motor positions have a range between -pi/2 and pi/2
-    // 180 degrees rotation limit
-    // 0.01745329252 radians per degree
-    degrees = rest_degrees = joint_position_command_[joint_id] / 0.01745329252;
-    //std::cout << "degrees " << degrees << std::endl;
-    // 1,8 degrees per tick
-    // round down since it is positive
-    rounded = floor(degrees / 1.8);
-    //std::cout << "rounded ticks: " << rounded << std::endl;
-    rest_degrees = degrees - (rounded * 1.8);
+    // Convert radians to ticks and micro ticks
+    temp_ticks = toticks(joint_position_command_[joint_id]);
+    ticks[joint_id] = temp_ticks[0];
+    micro_ticks[joint_id] = temp_ticks[1];
 
-    // create micro ticks
-    // 32 micros ticks on a real tick
-    // 1,8/32 = 0.05625
-    if (degrees >= 0) // Positive radians
-    {
-      //std::cout << "+ angle" << std::endl;
-      micro_ticks[joint_id] = floor(rest_degrees / 0.05625);
-    }
-    else // Negative radians
-    {
-      //std::cout << "- angle" << std::endl;
-      micro_ticks[joint_id] = ceil(rest_degrees / 0.05625);
-    }
-    
-    // Make between 0 - 200 instead of -100 - 100
-    rounded += 100;
-    ticks[joint_id] = (uint8_t)rounded;
+    //std::cout << "joint: " << joint_id << std::endl;
+    //std::cout << "total degrees: " << ((ticks[joint_id] * 1.8) + (micro_ticks[joint_id] * 0.05625) - 180) << std::endl << std::endl;
 
-    //std::cout << "rest degrees: " << rest_degrees << std::endl;
-
-    //Print
-    //std::cout << (int)ticks[joint_id] << std::endl;
-    //std::cout << (int)micro_ticks[joint_id] << std::endl;
-
-//compare and see if we have atleast one whole tick we want to send
+    // Compare and see if we have atleast one whole tick we want to send
     tick_diff=0;
     tick_diff= abs(ticks[joint_id]-current_ticks[joint_id]);
 
-    //std::cout << "total degrees: " << ((ticks[joint_id] * 1.8) + (micro_ticks[joint_id] * 0.05625) - 180) << std::endl << std::endl;
-
-      if (tick_diff>0){
-        moved=true;
-        if (ticks[joint_id]>current_ticks[joint_id]){          
-          std::cout<<"Moving joint " << joint_id << ". Ticks: " << (int)tick_diff<<"."<< std::endl;
-          current_ticks[joint_id]=current_ticks[joint_id]+tick_diff;
-          msg_ticks[joint_id]=100+tick_diff;
-        }else if (ticks[joint_id]<current_ticks[joint_id])
-        {
-          std::cout<<"Moving joint " << joint_id << ". Ticks: -" << (int)tick_diff<<"."<< std::endl;
-          current_ticks[joint_id]=current_ticks[joint_id]-tick_diff;
-          msg_ticks[joint_id]=100-tick_diff;
-        }
+    if (tick_diff>0){
+      moved=true;
+      if (ticks[joint_id]>current_ticks[joint_id]){          
+        std::cout<<"Moving joint " << joint_id << ". Ticks: " << (int)tick_diff<<"."<< std::endl;
+        current_ticks[joint_id]=current_ticks[joint_id]+tick_diff;
+        msg_ticks[joint_id]=100+tick_diff;
+      }else if (ticks[joint_id]<current_ticks[joint_id])
+      {
+        std::cout<<"Moving joint " << joint_id << ". Ticks: -" << (int)tick_diff<<"."<< std::endl;
+        current_ticks[joint_id]=current_ticks[joint_id]-tick_diff;
+        msg_ticks[joint_id]=100-tick_diff;
       }
-//compare and see if we have atleast one whole micro_tick we want to send
+    }
 
-
-
+    // Compare and see if we have atleast one whole micro_tick we want to send
     tick_diff=0;
     tick_diff= abs(micro_ticks[joint_id]-current_micro_ticks[joint_id]);
-      if (tick_diff>0){
-        moved=true;
-        /*if (ticks[joint_id]<100){
-        	msg_ticks[joint_id]=(32-micro_ticks[joint_id])-(32-current_micro_ticks[joint_id]);
-        }
-*/
-
-        if (micro_ticks[joint_id]>current_micro_ticks[joint_id]){
+    if (tick_diff>0){
+      moved=true;
+      if (micro_ticks[joint_id]>current_micro_ticks[joint_id]){
         std::cout<<"Moving joint " << joint_id << ". Micro-Ticks: " << (int)tick_diff<<"."<< std::endl;
-          current_micro_ticks[joint_id]=current_micro_ticks[joint_id]+tick_diff;
-          msg_micro_ticks[joint_id]=tick_diff;
-        }else if (micro_ticks[joint_id]<current_micro_ticks[joint_id])
-        {
+        current_micro_ticks[joint_id]=current_micro_ticks[joint_id]+tick_diff;
+        msg_micro_ticks[joint_id]=tick_diff;
+      }
+      else if (micro_ticks[joint_id]<current_micro_ticks[joint_id])
+      {
         std::cout<<"Moving joint " << joint_id << ". Micro-Ticks: -" << (int)tick_diff<<"."<< std::endl;
-          msg_ticks[joint_id]--;
-          msg_micro_ticks[joint_id]=32-tick_diff;
-          current_micro_ticks[joint_id]=current_micro_ticks[joint_id]-tick_diff;
-        }
-        //Move to an array where we gather both ticks and micro ticks
-      } 
-
-        //Move to an array where we gather both ticks and micro ticks
-        out_ticks[joint_id*2] = msg_ticks[joint_id];
-        out_ticks[joint_id*2+1] = msg_micro_ticks[joint_id]; 
-
+        msg_ticks[joint_id]--;
+        msg_micro_ticks[joint_id]=32-tick_diff;
+        current_micro_ticks[joint_id]=current_micro_ticks[joint_id]-tick_diff;
+      }
+    } 
+    
+    // Move to an array to send to the CAN bus
+    // Ordered by motor ex motor 1 ticks and microticks then motor 2 etc.
+    out_ticks[joint_id*2] = msg_ticks[joint_id];
+    out_ticks[joint_id*2+1] = msg_micro_ticks[joint_id]; 
   }
 
-if(moved){
-  // Convert to frame
-  Frame *frame = new Frame;
-  std::cout<<"Sending these vals over CAN:         ";
-  for (int i=0;i<8;i++)
+  if(moved)
   {
-     std::cout<< (int)out_ticks[i]<<"  ";
-  }
-  std::cout<<std::endl;
-  Header header = *frame = toframe2(header, out_ticks, 8);
+    // Convert to frame
+    Frame *frame = new Frame;
+    std::cout<<"Sending these vals over CAN:         ";
+    for (int i=0;i<8;i++)
+    {
+      std::cout<< (int)out_ticks[i]<<"  ";
+    }
+    std::cout<<std::endl;
+    Header header = *frame = toframe2(header, out_ticks, 8); // Puts the data in out_ticks in a frame
 
-  // Send data.
-  bcm.startTX(boost::chrono::duration<double>(5000000), header, 1, frame);
-  std::cout<<"The expected state of the motors are: ";
-  for (int i=0;i<4;i++)
-  {
-     std::cout<< (int)current_ticks[i]<<"  "<< (int)current_micro_ticks[i]<<"  ";
+    // Send data
+    bcm.startTX(boost::chrono::duration<double>(5000000), header, 1, frame); // Transmits the frame over CAN
+    std::cout<<"The expected state of the motors are: ";
+    for (int i=0;i<4;i++)
+    {
+      std::cout<< (int)current_ticks[i]<<"  "<< (int)current_micro_ticks[i]<<"  ";
+    }
+    std::cout<<std::endl;
+    std::cout<<std::endl;
   }
-  std::cout<<std::endl;
-  std::cout<<std::endl;
 }
 
-  // ----------------------------------------------------
-  // ----------------------------------------------------
-  // ----------------------------------------------------
-  //
-  // FILL IN YOUR WRITE COMMAND TO USB/ETHERNET/ETHERCAT/SERIAL ETC HERE
-  //
-  // FOR A EASY SIMULATION EXAMPLE, OR FOR CODE TO CALCULATE
-  // VELOCITY FROM POSITION WITH SMOOTHING, SEE
-  // sim_hw_interface.cpp IN THIS PACKAGE
-  //
-  // DUMMY PASS-THROUGH CODE
-  //for (std::size_t joint_id = 0; joint_id < num_joints_; ++joint_id)
-  //  joint_position_[joint_id] = joint_position_command_[joint_id];
-  // END DUMMY CODE
-  //
-  // ----------------------------------------------------
-  // ----------------------------------------------------
-  // ----------------------------------------------------
-      }
-
-      void ButlerHWInterface::enforceLimits(ros::Duration &period)
-      {
+void ButlerHWInterface::enforceLimits(ros::Duration &period)
+{
   // ----------------------------------------------------
   // ----------------------------------------------------
   // ----------------------------------------------------
@@ -346,6 +295,6 @@ if(moved){
   // ----------------------------------------------------
   // ----------------------------------------------------
   // ----------------------------------------------------
-      }
+}
 
 }  // namespace
