@@ -51,9 +51,10 @@
 -->
 
 <!-- these are for launching the stuff needed to run Object detection-->
+<!--
   <include file="$(find darknet_ros)/launch/butler_detector.launch"/>
   <include file="$(find usb_cam)/launch/rgb_topic.launch"/>
-  <include file="$(find astra_launch)/launch/astra.launch"/>
+  <include file="$(find astra_launch)/launch/astra.launch"/>-->
 
 <!-- By default, we are not in debug mode -->
 <arg name="debug" default="false" />
