@@ -24,7 +24,6 @@
  <!--  <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher">
     <param name="publish_frequency" type="double" value="50.0" />
     <param name="tf_prefix" type="string" value="" />
-    <remap from="joint_states" to="/butler/joint_states" />
   </node> -->
 
   <!-- Fake Calibration -->
@@ -51,6 +50,11 @@
   </include>
 -->
 
+<!-- these are for launching the stuff needed to run Object detection-->
+  <include file="$(find darknet_ros)/launch/butler_detector.launch"/>
+  <include file="$(find usb_cam)/launch/rgb_topic.launch"/>
+  <include file="$(find astra_launch)/launch/astra.launch"/>
+
 <!-- By default, we are not in debug mode -->
 <arg name="debug" default="false" />
 <include file="$(find butler_robot)/launch/move_group.launch">
@@ -65,6 +69,7 @@
   <arg name="config" value="true"/>
   <arg name="debug" value="$(arg debug)"/>
 </include>
-<!--If database loading was enabled, start mongodb as well --><!-- 
-<include file="$(find butler_robot)/launch/default_warehouse_db.launch" if="$(arg db)"/> -->
+
+<!--If database loading was enabled, start mongodb as well -->
+<!--<include file="$(find butler_robot)/launch/default_warehouse_db.launch" if="$(arg db)"/> -->
 </launch>

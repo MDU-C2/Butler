@@ -201,6 +201,7 @@ void ButlerHWInterface::write(ros::Duration &elapsed_time)
       //std::cout << "total degrees: " << ((ticks[joint_id] * 1.8) + (micro_ticks[joint_id] * 0.05625) - 180) << std::endl << std::endl;
 
       // Compare and see if we have atleast one whole tick we want to send
+      //setting bool moved to true means we have moved so we will send over can this iteration
       tick_diff=0;
       tick_diff= abs(ticks[joint_id]-current_ticks[joint_id]);
 

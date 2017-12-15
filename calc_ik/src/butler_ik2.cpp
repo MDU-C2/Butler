@@ -32,16 +32,32 @@
 #include <kdl_conversions/kdl_msg.h>
 #include <tf/transform_datatypes.h>
 #include <tf/transform_listener.h>
+#include <butler/object_detector.h>
 
 #define PI 3.1415
+
+static geometry_msgs::Point point_goal;
+void xyzCallback(const geometry_msgs::Point &point) 
+{
+	point_goal = point;
+	return;
+}
+
+
 int main(int argc, char **argv){
 	ros::init(argc, argv, "tcp_to_jointspace");
 	ros::NodeHandle node_handle;
 	static const std::string PLANNING_GROUP = "arm";
+	ObjectDetector *obj_detector = new ObjectDetector();
+	//obj_detector = ObjectDetector::ObjectDetector();
+	ros::Subscriber xyz_sub;
+	xyz_sub = node_handle.subscribe("/object_detector/cup_position", 0, &xyzCallback);
 	std::vector<double> joint_group_positions;
 	ros::Rate r(50);
 	ros::AsyncSpinner spinner(1);
 	spinner.start();
+
+
 
 	moveit::planning_interface::MoveGroupInterface move_group(PLANNING_GROUP);
 	move_group.setPlanningTime(10);
@@ -76,7 +92,56 @@ int main(int argc, char **argv){
 		std::cout << "c: Show controls to move in cartesian." << std::endl;
 		std::cout << "x: Exit." << std::endl;
 		std::cin >> input;
-		if (input=='a'){
+
+		if (input=='z'){
+			obj_detector->sendGoal(ObjectID::Cup);
+			std::cout << "Received position of the cup." << std::endl;
+			std::cout << "x: " << point_goal.x << std::endl;
+			std::cout << "y: " << point_goal.y << std::endl;
+			std::cout << "z: " << point_goal.z << std::endl;
+			std::cout << "Enter the pitch:"; std::cin >> pitch; std::cout<<std::endl;
+			std::cout << "Enter the roll:"; std::cin >> roll; std::cout<<std::endl;
+			x=point_goal.x; y=point_goal.y; z=point_goal.z;
+			robot_pose.header.frame_id="dummy_base";
+			robot_pose.pose.position.x=x;
+			robot_pose.pose.position.y=y;
+			robot_pose.pose.position.z=z;
+			hyp=sqrt(robot_pose.pose.position.x * robot_pose.pose.position.x + robot_pose.pose.position.y * robot_pose.pose.position.y);
+			tfScalar rotz=acos(robot_pose.pose.position.x / hyp);
+			if (robot_pose.pose.position.y<=0) rotz=rotz*-1;
+			tfScalar roty=pitch;
+			tfScalar rotx=roll;
+			qn.setEulerZYX(rotz,roty,rotx);
+			robot_pose.pose.orientation.x=(double)qn.x();
+			robot_pose.pose.orientation.y=(double)qn.y();
+			robot_pose.pose.orientation.z=(double)qn.z();
+			robot_pose.pose.orientation.w=(double)qn.w();
+
+			std::cout<< "The target pose is: \n"<<
+			"x: " << robot_pose.pose.position.x << " \n" << 
+			"y: " << robot_pose.pose.position.y << " \n" << 
+			"z: " << robot_pose.pose.position.z << " \n" <<
+			"qx: " << robot_pose.pose.orientation.x << " \n" << 
+			"qy: " << robot_pose.pose.orientation.y << " \n" << 
+			"qz: " << robot_pose.pose.orientation.z<< " \n" << 
+			"qw: " << robot_pose.pose.orientation.w << std::endl;
+
+			robot_pose.header.stamp = move_group.getRandomPose().header.stamp;
+			now = ros::Time::now();
+			tf_listener.waitForTransform("odom_gazebo","dummy_base", now, ros::Duration(3.0));
+			tf_listener.transformPose("odom_gazebo",robot_pose,new_pose);
+
+			std::cout<< "The new target pose is: \n"<<
+			"x: " << new_pose.pose.position.x << " \n" << 
+			"y: " << new_pose.pose.position.y << " \n" << 
+			"z: " << new_pose.pose.position.z << " \n" <<
+			"qx: " << new_pose.pose.orientation.x << " \n" << 
+			"qy: " << new_pose.pose.orientation.y << " \n" << 
+			"qz: " << new_pose.pose.orientation.z<< " \n" << 
+			"qw: " << new_pose.pose.orientation.w << std::endl;
+			move_group.setPoseTarget(new_pose);
+			move_group.move();
+		}else if (input=='a'){
 			std::cout << "Enter x, y, z, pitch and roll for EEF." << std::endl;
 			std::cout << "x:"; std::cin >> x; std::cout<<std::endl;
 			std::cout << "y:"; std::cin >> y; std::cout<<std::endl;

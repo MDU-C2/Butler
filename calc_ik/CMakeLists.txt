@@ -21,7 +21,7 @@ find_package(catkin REQUIRED COMPONENTS
   )
 
 find_package(orocos_kdl REQUIRED)
-
+find_package(butler REQUIRED)
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
@@ -126,11 +126,11 @@ DEPENDS orocos_kdl
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-# include
-##${butler}
+#../butler/include
 ${catkin_INCLUDE_DIRS}
+${butler_INCLUDE_DIRS}
 )
-
+#target_link_libraries(calc_ik butler)
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
 #   src/${PROJECT_NAME}/calc_ik.cpp
@@ -210,18 +210,21 @@ ${catkin_INCLUDE_DIRS}
 # catkin_add_nosetests(test)
 
 
-##set(SOURCES ${butler}/object_detector.cpp ${butler}/object_detector.h)
-##add_executable(obj_detect ${SOURCES})
 
+##add_executable(butler src/object_detector.cpp)
+##target_link_libraries(butler
+##  ${catkin_LIBRARIES}
+##  )
 
 add_executable(butler_ik2 src/butler_ik2.cpp)
 target_link_libraries(butler_ik2
   ${catkin_LIBRARIES}
+  butler
   )
 
 add_executable(point_cloud src/point_cloud.cpp)
 target_link_libraries(point_cloud
   ${catkin_LIBRARIES}
   )
-add_dependencies(butler_ik2 calc_ik_generate_messages_cpp)
+add_dependencies(butler_ik2 calc_ik_generate_messages_cpp butler)
 add_dependencies(point_cloud calc_ik_generate_messages_cpp)
