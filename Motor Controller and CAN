@@ -1,0 +1,951 @@
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include "inc/hw_memmap.h"
+#include "inc/hw_types.h"
+#include "driverlib/gpio.h"
+#include "driverlib/pin_map.h"
+//#include "driverlib/rom.h"
+#include "driverlib/sysctl.h"
+#include "driverlib/uart.h"
+#include "utils/uartstdio.h"  //Debugg purpose, uartprintf
+#include "FreeRTOS.h"
+#include "task.h"
+#include "queue.h"
+#include "semphr.h"
+#include "driverlib/can.h"
+#include "driverlib/interrupt.h"
+#include "driverlib/pwm.h"
+#include "driverlib/sysctl.h"
+#include "driverlib/uart.h"
+#include "inc/hw_can.h"
+#include "inc/hw_ints.h"
+#include <math.h>
+#include "driverlib/timer.h"
+#include "inc/hw_gpio.h"
+#include <float.h>
+#include "driverlib/qei.h"
+
+#define DEG2RAD 3.14157 / 180;
+#define NUM_STEP_MOTORS 2
+
+typedef struct PulseControl{
+    uint32_t id;
+    uint32_t position;
+    uint32_t tick;
+    uint32_t num_pulses[1];
+    bool direction;   //Corrupted value - Reason behind this unknown. Replaced with a array called direction.
+    uint32_t ticksPerRev;
+}PulseCalculator;
+uint32_t direction[4];
+uint32_t taskReady;
+//typedef struct DCControl{
+//    uint8_t id;
+//    uint32_t target_position;
+//    uint32_t direction;
+//    bool enable;
+//}DCCtrl;
+
+
+//DCCtrl dc_control;
+uint8_t dc_id;
+uint32_t dc_target_position;
+uint32_t dc_direction;
+volatile bool dc_on=0;
+uint32_t last_error, totalError;
+//float pidterm;
+//static const int dc_motor_err_lim = 0.1;
+volatile PulseCalculator pulse_control[4];
+volatile uint32_t g_ui32MsgCount = 0;
+volatile bool rxFlag,txFlag = 0;
+volatile bool g_bErrFlag = 0;
+volatile UBaseType_t uxNumberOfItems;  //Checks number of messages in QueH1.
+xTaskHandle MotorOne,CANreceive,PID_Controller,CANtransceive;  //Handles for the tasks
+SemaphoreHandle_t xSemaphore,xSemaphore_rec;
+xQueueHandle QueH,QueH1;  //Global handle for the queue, QueH2 is for transceive, QueH for receive.
+struct canMsgs {
+    tCANMsgObject CANmsgRX, CANmsgTX;
+}msgsCAN;
+
+void Timer0IntHandler(void)
+{
+    PulseCalculator pulse[4] = {pulse_control[0],pulse_control[1],pulse_control[2],pulse_control[3] };
+    //UBaseType_t uxSavedInterruptStatus;
+    // uxSavedInterruptStatus = taskENTER_CRITICAL_FROM_ISR();
+    // checks number of messages in the transceive que.
+    uxNumberOfItems = uxQueueMessagesWaiting(QueH1);
+    // Clear the timer interrupt
+    TimerIntClear(TIMER0_BASE, TIMER_TIMA_TIMEOUT);
+    //Making correct quantity of pulses for stepper motor.
+    if(pulse[0].tick < pulse[0].num_pulses[0])
+    {
+        //pulse_control[0].direction = 1;
+        if(GPIOPinRead(GPIO_PORTF_BASE, GPIO_PIN_0))
+        {
+            GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_0, 0); //Low
+        }
+        else
+        {
+            GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_0, GPIO_PIN_0);  //High
+            //UARTprintf("1: high tick: %u pulses: %u \n\t", pulse_control[0].tick, pulse_control[0].num_pulses);
+        }
+
+        pulse[0].tick++;
+        // UARTprintf("dir: %i", pulse_control[0].direction);
+        //Checks which direction. CCW or CW.
+        if(direction[0] == 1)
+        {
+            //UARTprintf("Fram0\n\t");
+            GPIOPinWrite(GPIO_PORTA_BASE,GPIO_PIN_2, GPIO_PIN_2);
+        }
+        else
+        {
+            //Sends back a message to jetson. Letting them know that we reached the destination.
+
+            //UARTprintf("Bak0\n\t");
+            GPIOPinWrite(GPIO_PORTA_BASE,GPIO_PIN_2, 0);
+        }
+        if(pulse[0].tick == pulse[0].num_pulses[0] )
+        {
+            pulse[0].tick++;
+            GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_0, 0);
+            //            UARTprintf("[motor 1] Num of pulse in interrupt: %u\n\t", pulse[0].tick);
+            //Send to Transceiver queue.
+            xQueueSendToBack(QueH1,&pulse[0].id,0);  //ID 0
+        }
+
+    }
+
+    if(pulse[1].tick < pulse[1].num_pulses[0])
+    {
+
+        if(GPIOPinRead(GPIO_PORTF_BASE, GPIO_PIN_1))
+        {
+            GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_1, 0);  //Low
+        }
+        else
+        {
+            GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_1, GPIO_PIN_1);  //High
+            // UARTprintf("high tick: %u", pulse_control[1].tick);
+        }
+        pulse[1].tick++;
+        //UARTprintf("dir: %i\n\t",pulse_control[1].direction);
+        //Checks which direction. CCW or CW.
+        if(direction[1] == 1)
+        {
+            //UARTprintf("Fram1\n\t");
+            GPIOPinWrite(GPIO_PORTA_BASE,GPIO_PIN_3, GPIO_PIN_3);
+        }
+        else
+        {
+            //Sends back a message to jetson. Letting them know that we reached the destination.
+            /* if(pulse_control[1].tick == pulse_control[1].num_pulses[0] )
+            {
+                pulse_control[1].tick++;
+                UARTprintf("id: %u", pulse_control[1].id);
+                xQueueSendToBack(QueH1,&pulse_control[1].id,0);  //ID 2
+            } */
+            //UARTprintf("BAK1\n\t");
+            GPIOPinWrite(GPIO_PORTA_BASE,GPIO_PIN_3, 0);
+        }
+        if(pulse[1].tick == pulse[1].num_pulses[0] )
+        {
+            pulse[1].tick++;
+            GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_1, 0);
+            //            UARTprintf("[motor 2] Num of pulse in interrupt: %u\n\t", pulse[1].tick);
+            xQueueSendToBack(QueH1,&pulse[1].id,0);  //ID 2
+        }
+    }
+    if(pulse[2].tick < pulse[2].num_pulses[0])
+    {
+        if(GPIOPinRead(GPIO_PORTF_BASE, GPIO_PIN_2))
+        {
+            GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_2, 0);  //Low
+        }
+        else
+        {
+            GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_2, GPIO_PIN_2);  //High
+        }
+        pulse[2].tick++;
+        //Checks which direction. CCW or CW.
+        if(direction[2] == 1)
+        {
+            GPIOPinWrite(GPIO_PORTA_BASE,GPIO_PIN_4, GPIO_PIN_4);
+        }
+        else
+        {
+            //Sends back a message to jetson. Letting them know that we reached the destination.
+            /*if(pulse_control[2].tick == pulse_control[2].num_pulses[0] )
+            {
+                pulse_control[2].tick++;
+                UARTprintf("id: %u", pulse_control[2].id);
+                xQueueSendToBack(QueH1,&pulse_control[2].id,0);  //ID 4
+            } */
+            GPIOPinWrite(GPIO_PORTA_BASE,GPIO_PIN_4, 0);
+        }
+        if(pulse[2].tick == pulse[2].num_pulses[0] )
+        {
+            pulse[2].tick++;
+            GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_2, 0);
+            //UARTprintf("id: %u", pulse[2].id);
+            xQueueSendToBack(QueH1,&pulse[2].id,0);  //ID 4
+            //            UARTprintf("fisken: %u", uxNumberOfItems);
+        }
+
+    }
+    //if queue contains 4 messages which correlates to number of pulses for each motor.
+    //wake up the bad boy transceiver to send the message to the jetson.
+    //taskENTER_CRITICAL();
+    pulse_control[0] = pulse[0];
+    pulse_control[1] = pulse[1];
+    pulse_control[2] = pulse[2];
+    pulse_control[3] = pulse[3];
+    //taskEXIT_CRITICAL();
+    if(uxNumberOfItems >= NUM_STEP_MOTORS) //+1 because of DC motor.
+    {
+        //UARTprintf("fisken");
+        vTaskResume(CANtransceive);
+        //        xSemaphoreGive( xSemaphore );
+    }
+    //taskEXIT_CRITICAL_FROM_ISR(uxSavedInterruptStatus);
+}
+
+void initMotors(void)
+{
+
+    unsigned long Period = SysCtlClockGet()/20000; // 20kHZ, 10kHZ for 90kg/cm motor.
+
+    //PulseCalculator pulse[4] = {pulse_control[0],pulse_control[1],pulse_control[2],pulse_control[3] };
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_TIMER0);
+    SysCtlDelay(2000);
+    TimerConfigure(TIMER0_BASE, TIMER_CFG_PERIODIC_UP);
+    //Making the interrupt period based for high and low
+    //High and low simulates a PWM* and acts like one.
+    TimerLoadSet(TIMER0_BASE, TIMER_A, Period / 2 -1);  //50% duty cycle, -1 for 0 counts.
+    IntEnable(INT_TIMER0A); //Enable interrupt
+    TimerIntEnable(TIMER0_BASE, TIMER_TIMA_TIMEOUT);  //Calls on the interrupt function. Which generates high and low.
+    IntMasterEnable();
+    TimerEnable(TIMER0_BASE, TIMER_A);
+
+    //pidTerm = 50;
+    //last_error = 0;
+    taskENTER_CRITICAL();
+    PulseCalculator pulse[4] = {pulse_control[0],pulse_control[1],pulse_control[2],pulse_control[3] };
+    taskReady = 1;
+    //Change pulses per rev here depending on the motors and pins.
+    pulse[0].ticksPerRev = 3200; //42STH38-1684 Stepper Motor 32 ticks
+    pulse[1].ticksPerRev = 6400;  // AT5130-R Stepper motor 64 ticks
+    pulse[2].ticksPerRev = 3200;
+    pulse[0].position = 100;
+    pulse[1].position = 100;
+    pulse[2].position = 100;
+    pulse[0].direction = false;
+    pulse[1].direction = false;
+    pulse[2].direction = false;
+    direction[0] = 0;
+    direction[1] = 0;
+    direction[2] = 0;
+    pulse_control[0] = pulse[0];
+    pulse_control[1] = pulse[1];
+    pulse_control[2] = pulse[2];
+    pulse_control[3] = pulse[3];
+    taskEXIT_CRITICAL();
+}
+
+void MotorControl_one(void * pvParameters)
+{
+    // UARTprintf("motor_control\n\t");
+    struct canMsgs canREC;
+    //uint32_t Period = SysCtlClockGet()/24000; // 24kHZ
+    initMotors();  //Init pulse controller. For High and Low.
+    volatile UBaseType_t uxNumberOfItems = uxQueueMessagesWaiting(QueH);
+    //Que contains CAN messages.
+    UARTprintf("[motorcontrol] Started...\n\t");
+    for(;;)
+    {
+        //while not done with current goal
+        while(!taskReady)
+        {
+            vTaskDelay(5);
+        }
+        uxNumberOfItems = uxQueueMessagesWaiting(QueH);
+        int dc_pulse_msg = 0;
+        //If received a message, proceed.
+        if(uxNumberOfItems > 0)
+        {
+            xQueueReceive(QueH,&canREC,0);
+            int j = 0;
+            UARTprintf("[motorcontrol] Processing message...\n\t");
+
+            PulseCalculator pulse[4] = {pulse_control[0],pulse_control[1],pulse_control[2],pulse_control[3] };
+
+            if(canREC.CANmsgRX.ui32MsgID == 1)
+            {
+                int i;
+                int pulse_msg = 0;
+                //For controlling 3 stepper motors.
+                //Change NUM_STEP_MOTORS to 3.
+                //Byte 7 unused - future work uart servo motor?
+                for(i = 0; i <= (NUM_STEP_MOTORS-1)*2; i+=2)
+                {
+                    pulse_msg = canREC.CANmsgRX.pui8MsgData[i];
+                    //int32_t increment = 0;
+                    //UARTprintf("j: %i pulseinit: %i\n\t",j, pulse_msg);
+                    pulse_msg = pulse_msg - 100; //Direction plus CCW and minus CW. 100 means 0 -> stop. 200 -> 180 degrees CCW. 0 -> 180 degrees CW
+                    //UARTprintf("pulse1: %i\n\t", pulse_msg);
+                    //Messages between 0-200, 0 -> 180 degrees CCW, 200 -> 180 degrees CW.
+                    if(canREC.CANmsgRX.pui8MsgData[i] < 201)
+                    {
+
+                        //If below zero the motor goes CW
+
+                        if(pulse_msg < 0)
+                        {
+                            // UARTprintf("backward\n\t");
+                            //      taskENTER_CRITICAL();
+                            pulse[j].direction = true;
+                            direction[j] = 1;
+                            //UARTprintf("Pulser: %i",pulse[j].direction);
+                            //      taskEXIT_CRITICAL();
+
+                            pulse_msg = pulse_msg * (-1);
+                        }
+                        else
+                        {
+                            // UARTprintf("forward\n\t");
+                            //If not below zero the motor goes CCW
+                            pulse[j].direction = false;
+                            direction[j] = 0;
+                        }
+                        //  UARTprintf("dir: %i\n\t",  pulse_control[j].direction);
+                        //*3200 for 1 pulse which is 1.8 degrees. Also *200 for 0.1125 degrees, micro steps.
+                        pulse[j].num_pulses[0] = pulse_msg*pulse[j].ticksPerRev + canREC.CANmsgRX.pui8MsgData[i+1]*200;
+                        //UARTprintf("ticksperREV: %i",pulse[j].ticksPerRev);
+                        //Just for sending the correct micro steps back.
+                        pulse[j].num_pulses[1]=canREC.CANmsgRX.pui8MsgData[i+1];
+
+                        //                                            //
+                        pulse[j].tick = 0;
+                        pulse[j].id = j; //0 to 4
+                        j++;
+
+                    }
+
+
+                }
+
+
+                dc_pulse_msg = canREC.CANmsgRX.pui8MsgData[6]-100;
+                taskENTER_CRITICAL();
+                pulse_control[0] = pulse[0];
+                pulse_control[1] = pulse[1];
+                pulse_control[2] = pulse[2];
+                pulse_control[3] = pulse[3];
+                //UARTprintf("direction: %i num: %i tick: %i\n\t",direction[0] , pulse[0].num_pulses[0], pulse[0].tick );
+                taskEXIT_CRITICAL();
+                //DC Controller , 332 for one revolution.
+                dc_target_position  = floor(abs(dc_pulse_msg) * 1.8 / (360/332)); //Convert pulses back to normal values.
+                //Acquiring position from encoder -> QEIPositionGet.
+                uint32_t curr_pos = QEIPositionGet(QEI0_BASE);
+                if(dc_pulse_msg > 0)
+                {
+
+                    dc_target_position = curr_pos + floor(abs(dc_pulse_msg) * 1.8 / (360/332));
+
+                }
+                else
+                {
+                    dc_target_position = curr_pos - floor(abs(dc_pulse_msg) * 1.8 / (360/332));
+
+                }
+                //Mod 332 because of 1 revolution.
+                dc_target_position = dc_target_position % 332;
+
+
+                //            free(pulse;)
+                UARTprintf("target pos: %u", dc_target_position);
+                taskReady = 0;
+                vTaskResume(PID_Controller);
+                UARTprintf("[motorcontorl] Done processing message\n\t");
+            }
+
+
+        }
+
+        vTaskDelay(10);
+
+    }
+}
+void CANreceiver(void *pvParameters)
+{
+    UARTprintf("canreceiver\n\t");
+    uint8_t msgData[8]={0}; //8 Bytes of data.
+    struct canMsgs MsgHandler;
+    TickType_t xLastWakeTime;
+    xLastWakeTime = xTaskGetTickCount();
+    const TickType_t xFrequency = 100;
+    //In order to receive any CAN ID, the ID and mask must both
+    // be set to 0, and the ID filter enabled.
+    // Recieving CAN messages
+    MsgHandler.CANmsgRX.ui32MsgID = 0;
+    MsgHandler.CANmsgRX.ui32MsgIDMask = 0;
+    MsgHandler.CANmsgRX.ui32Flags = MSG_OBJ_RX_INT_ENABLE | MSG_OBJ_USE_ID_FILTER;
+    MsgHandler.CANmsgRX.ui32MsgLen = 8;
+    //1 represents the message object, not related to CAN message ID. Can send up to 32. Generates interrupt upon completion.
+    CANMessageSet(CAN0_BASE, 1, &MsgHandler.CANmsgRX, MSG_OBJ_TYPE_RX);
+    // unsigned int dataObtained[8]={0};  //Data received from CANRX
+
+    for(;;)
+    {
+
+        //        xSemaphoreTake( xSemaphore_rec, ( TickType_t ) 50 );
+        if (rxFlag == 1 ) //if rx interrupt occured.
+        {
+            //            while(xSemaphoreTake( xSemaphore_rec, ( TickType_t ) 50 ) != pdTRUE)
+            //            {
+            //                UARTprintf("trying to get sem\n\t");
+            //                vTaskDelay(50);
+            //            }
+
+            MsgHandler.CANmsgRX.pui8MsgData = msgData; //set pointer to the CANRX buffer
+            // xSemaphoreTake( xSemaphore, ( TickType_t ) 50 );
+            CANMessageGet(CAN0_BASE,1,&MsgHandler.CANmsgRX, 0); //Receive first object message.
+            //  xSemaphoreGive( xSemaphore );
+            rxFlag = 0; //Clear the RX flag.
+
+            if(MsgHandler.CANmsgRX.ui32Flags & MSG_OBJ_DATA_LOST)
+            {
+                //SysCtlPeripheralEnable(RED_GPIO_PERIPH);
+                //UARTprintf("CAN message loss detected\n");
+            }
+
+            /* dataObtained[0] = msgData[0]; // Multiply with *10 if passing through small values.
+            dataObtained[1] = msgData[1];
+            dataObtained[2] = msgData[2];
+            dataObtained[3] = msgData[3];
+            dataObtained[4] = msgData[4];
+            dataObtained[5] = msgData[5];
+            dataObtained[6] = msgData[6];
+            dataObtained[7] = msgData[7];
+            UARTprintf("Received values first:%d\t\n s: %d\t\n t: %d\t testlast: %d\t\n ",
+                       dataObtained[0],dataObtained[1],dataObtained[2],dataObtained[7]); */
+            //      UARTprintf("Total count: %u\n", g_ui32MsgCount);
+            //UARTprintf("struct print: %u\n\t",MsgHandler.CANmsgRX.pui8MsgData[0]);
+            //      UARTprintf("ID: %u\n",MsgHandler.CANmsgRX.ui32MsgID);
+            UARTprintf("[canreceiver] Received message...\n\t");
+            xQueueSendToBack(QueH,&MsgHandler,0);  //Sending the struct containing values to the queue.
+
+            //            vTaskResume(MotorOne);
+            //vTaskDelay(300);
+            //xSemaphoreTake( xSemaphore, ( TickType_t ) 50 );
+            //vTaskResume(MotorOne);
+            //            xSemaphoreGive(xSemaphore_rec);
+
+
+        }
+        vTaskDelayUntil( &xLastWakeTime, xFrequency );
+    }
+}
+
+//Accumulates the position values so the motors knows where they are.
+inline uint8_t wrapPosition(int pos)
+{
+    //UARTprintf("\n pos1: %d\n\t", pos );
+
+    if (pos < 0){
+        pos = 200+pos;
+    }
+    //UARTprintf("\n pos2: %d\n\t", pos);
+
+    //UARTprintf("\nmod: %d\n\t", pos % 200);
+    return (uint8_t)(pos%200);
+}
+
+void CANtransciever(void *pvParameters)
+{
+    UARTprintf("cantransceiver\n\t");
+    //    unsigned int msgData;
+    struct canMsgs MsgHandler;
+
+    //unsigned char *msgDataPtr = &msgData; // make a pointer to msgData so we can access individual bytes
+    unsigned char *msgDataPtr = (unsigned char *) calloc(8,sizeof(unsigned char));
+    //  uint8_t *pui8MsgData;
+    int pulse_id;
+    // pui8MsgData = msgDataPtr;
+    // taskENTER_CRITICAL();
+    PulseCalculator pulse[4] = {pulse_control[0],pulse_control[1],pulse_control[2],pulse_control[3] };
+    //int dir[4] = {direction[0], direction[1], direction[2], direction[3]};
+    //taskEXIT_CRITICAL();
+    MsgHandler.CANmsgTX.ui32MsgID =1;
+    MsgHandler.CANmsgTX.ui32MsgIDMask = 0;
+    MsgHandler.CANmsgTX.ui32Flags = MSG_OBJ_TX_INT_ENABLE;
+    MsgHandler.CANmsgTX.ui32MsgLen = 8;
+    MsgHandler.CANmsgTX.pui8MsgData = msgDataPtr;
+    int tmp;
+    for(;;)
+    {
+        //take
+        //        while(xSemaphoreTake( xSemaphore, ( TickType_t ) 50 ) != pdTRUE)
+        //        {
+        //            vTaskDelay(50);
+        //        }
+        UARTprintf("[cantransceiver] Sending message...\n\t");
+        int idCheck=0;
+        while(idCheck < NUM_STEP_MOTORS)
+        {
+            xQueueReceive(QueH1,&pulse_id,0);
+            //UARTprintf("fisk");
+            //UARTprintf("Transceiver pulse id: %d \n\t",pulse_id);
+            if(pulse_id == 0)
+            {
+                //UARTprintf("\nnum_pulses: %d\n\t", pulse[0].num_pulses[0]);
+                //UARTprintf("math: %u", ((pulse_control[0].num_pulses[0]-(pulse_control[0].num_pulses[1]*200))/3200));
+                tmp = ((pulse[0].num_pulses[0]-(pulse[0].num_pulses[1]*200))/pulse[0].ticksPerRev);
+                //UARTprintf("Transceive pulse: %u\n\t",tmp);
+                msgDataPtr[1] = pulse[0].num_pulses[1];
+                if (direction[0] == 1)
+                {
+                    tmp = tmp * (-1);
+                }
+                // UARTprintf("\ntmp: %d\n\t", tmp);
+                //    pulse_control[0].position += tmp;
+                //Accumulate position values.
+                pulse[0].position = wrapPosition(pulse[0].position + tmp);
+                //UARTprintf("Position transceive: %i\n\t", pulse[0].position);
+                msgDataPtr[0] = pulse[0].position;
+                //UARTprintf("msgDataPtr: %s",msgDataPtr[0]);
+                //UARTprintf("\ndataptr: %d\n\t", msgDataPtr[0]);
+                //msgDataPtr[0] = (pulse_control[0].tick/3200);
+            }
+            else if(pulse_id == 1)
+            {
+                tmp = ((pulse[1].num_pulses[0]-(pulse[1].num_pulses[1]*200))/pulse[1].ticksPerRev);
+                msgDataPtr[3] = pulse[1].num_pulses[1];
+                if (direction[1] == 1)
+                {
+                    tmp = tmp * (-1);
+                }
+                pulse[1].position += tmp;
+                pulse[1].position = wrapPosition(pulse[1].position);
+                msgDataPtr[2] = pulse[1].position;
+            }
+            else if(pulse_id == 2)
+            {
+                //Just to convert total pulses into its original pulse.
+                tmp = ((pulse[2].num_pulses[0]-(pulse[2].num_pulses[1]*200))/pulse[2].ticksPerRev);
+                msgDataPtr[5] = pulse[2].num_pulses[1];
+                if (direction[2] == 1)
+                {
+                    tmp = tmp * (-1);
+                }
+                pulse[2].position += tmp;
+                pulse[2].position = wrapPosition(pulse[2].position);
+                msgDataPtr[4] = pulse[2].position;
+            }
+            //Sends a CAN message with information about pulses.
+            idCheck+=1; //watch LLAMAS with hats in youtube! ASAP. */
+//            else if(pulse_id == 3)
+//            {
+//                tmp =3 ;
+//            }
+        }
+        //  xSemaphoreTake( xSemaphore, ( TickType_t ) 50 );
+        CANMessageSet(CAN0_BASE, 2, &MsgHandler.CANmsgTX, MSG_OBJ_TYPE_TX);
+        //  xSemaphoreGive( xSemaphore );
+        free(msgDataPtr);
+        taskENTER_CRITICAL();
+        pulse_control[0] = pulse[0];
+        pulse_control[1] = pulse[1];
+        pulse_control[2] = pulse[2];
+        pulse_control[3] = pulse[3];
+        taskEXIT_CRITICAL();
+        //        UARTprintf("[cantransceiver] Setting task ready...\n\t");
+        taskReady = 1;
+        //give
+        //        xSemaphoreGive( xSemaphore );
+        vTaskSuspend(CANtransceive);
+    }
+
+}
+
+
+//Accumulates the position values so the motors knows where they are.
+inline uint8_t GatherPos(int pos)
+{
+    //UARTprintf("\n pos1: %d\n\t", pos );
+
+    if (pos < 0){
+        pos = 332+pos;
+    }
+    //UARTprintf("\n pos2: %d\n\t", pos);
+
+    //UARTprintf("\nmod: %d\n\t", pos % 200);
+    return (uint8_t)(pos%332);
+}
+void initDCmotor(void)
+{
+    //dc_current_position = 0;
+    //dc_tick = 0;
+    dc_direction = 0;
+    dc_on = false;
+
+    last_error = 0;
+    totalError = 0;
+    dc_target_position = 166;
+
+
+    unsigned long Period = SysCtlClockGet()/10000;
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOD);
+    //Unlock GPIOD7 - Like PF0 its used for NMI - Without this step it doesn't work
+    HWREG(GPIO_PORTD_BASE + GPIO_O_LOCK) = GPIO_LOCK_KEY; //In Tiva include this is the same as "_DD" in older versions (0x4C4F434B)
+    HWREG(GPIO_PORTD_BASE + GPIO_O_CR) |= 0x80;
+    HWREG(GPIO_PORTD_BASE + GPIO_O_LOCK) = 0;
+    /*                                           */
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_QEI0);
+    //Encoder -> Reading on pins PD6 and PD7. Acquiring position.
+    GPIOPinTypeQEI(GPIO_PORTD_BASE, GPIO_PIN_6);
+    GPIOPinTypeQEI(GPIO_PORTD_BASE, GPIO_PIN_7);
+    GPIOPinConfigure(GPIO_PD6_PHA0);
+    GPIOPinConfigure(GPIO_PD7_PHB0);
+
+    //
+    // Configure the quadrature encoder to capture edges on both signals and
+    // maintain an absolute position by resetting on index pulses. Using a
+    // 1000 line encoder at four edges per line, there are 333 pulses per
+    // revolution; therefore set the maximum position to 332 as the count
+    // is zero based.
+    //
+    QEIConfigure(QEI0_BASE, (QEI_CONFIG_CAPTURE_A_B | QEI_CONFIG_NO_RESET |
+            QEI_CONFIG_QUADRATURE | QEI_CONFIG_NO_SWAP), 332);
+    //
+    // Enable the quadrature encoder.
+    //
+    QEIEnable(QEI0_BASE);
+    QEIPositionSet(QEI0_BASE, 166);  //Starts from the middle. 100 is 0 in motorcontroller, encoder is 0 on value 166, 332 is for 360 degrees.
+
+    // Enable the peripherals used by this program.
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOB);
+
+    GPIOPinTypeGPIOOutput(GPIO_PORTB_BASE, GPIO_PIN_4);  // PF3 - PA5 DC motor, byte 6 and 7 -> DC motor.
+        GPIOPinWrite(GPIO_PORTB_BASE,GPIO_PIN_4, 0);  //
+        GPIOPinTypeGPIOOutput(GPIO_PORTB_BASE, GPIO_PIN_4);  // PA5 - DC motor - Direction
+        //GPIOPinWrite(GPIO_PORTB_BASE,GPIO_PIN_4, GPIO_PIN_4);  //
+
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_PWM0);
+    SysCtlPWMClockSet(SYSCTL_PWMDIV_1); //
+    GPIOPinConfigure(GPIO_PB6_M0PWM0);
+    GPIOPinTypePWM(GPIO_PORTB_BASE, GPIO_PIN_6);
+    PWMGenConfigure(PWM0_BASE, PWM_GEN_0, PWM_GEN_MODE_DOWN | PWM_GEN_MODE_NO_SYNC);
+    // Set the PWM period to 10KHz.  To calculate the appropriate parameter
+    // use the following equation: N = (1 / f) * SysClk.  Where N is the
+    // function parameter, f is the desired frequency, and SysClk is the
+    // system clock frequency.
+    PWMGenPeriodSet(PWM0_BASE, PWM_GEN_0, 5000);
+
+    //Start at 0.01% duty cycle.
+    PWMPulseWidthSet(PWM0_BASE, PWM_OUT_0, 5);
+    //PWMIntEnable(PWM0_BASE, PWM_INT_GEN_0);
+    //PWMGenIntTrigEnable(PWM0_BASE, PWM_GEN_0, PWM_INT_CNT_LOAD);
+    //IntEnable(INT_PWM0_0);
+    //
+    // Enable the PWM0 output signal (PB6).
+    //
+    PWMOutputState(PWM0_BASE, PWM_OUT_0_BIT, true);
+    //
+    // Enables the PWM generator block.
+    //
+    PWMGenEnable(PWM0_BASE, PWM_GEN_0);
+    //    SysCtlPeripheralEnable(SYSCTL_PERIPH_TIMER1);
+    //    //  SysCtlPeripheralEnable(SYSCTL_PERIPH_TIMER2);
+    //    SysCtlDelay(20000);
+    //    TimerConfigure(TIMER1_BASE, TIMER_CFG_PERIODIC_UP);
+    //Making the interrupt period based for high and low
+    //High and low simulates a PWM* and acts like one.
+    //    TimerLoadSet(TIMER1_BASE, TIMER_A, Period / 2 -1);  //50% duty cycle, -1 for 0 counts.
+    //    IntEnable(INT_TIMER1A);
+    //    TimerIntEnable(TIMER1_BASE, TIMER_TIMA_TIMEOUT);  //Calls on the interrupt function. Which generates high and low.
+    //    TimerEnable(TIMER1_BASE, TIMER_A); //DC motor PWM
+    //    UARTprintf("initialized dc pwm\n\t");
+    //    //Timer2 DC encoder
+    //    TimerConfigure(TIMER2_BASE, TIMER_CFG_SPLIT_PAIR|TIMER_CFG_A_CAP_COUNT | TIMER_CFG_B_CAP_COUNT);
+    //    TimerControlEvent(TIMER2_BASE, TIMER_A, TIMER_EVENT_BOTH_EDGES);
+    //    TimerControlEvent(TIMER2_BASE, TIMER_B, TIMER_EVENT_BOTH_EDGES);
+    //    TimerIntEnable(TIMER2_BASE,TIMER_CAPA_EVENT|TIMER_CAPB_EVENT);
+    //    IntEnable(INT_TIMER2A|INT_TIMER2B);
+    //    TimerEnable(TIMER2_BASE, TIMER_A|TIMER_B);
+    UARTprintf("initialized dc encoder\n\t");
+}
+int setDutyCycle(int pidterm)
+{
+    uint32_t Period = SysCtlClockGet() / 20000;  //20kHZ
+//    UARTprintf( "pidterm: %i \%\n\t", pidterm);
+
+    pidterm = abs(pidterm);
+    if(pidterm > 50)
+    {
+        pidterm = 50;
+    }
+    else if(pidterm < 5)
+    {
+        pidterm = 5;
+    }
+    //90% duty cycle or 10%, -1 because 0 counts.
+    //    (uint32_t)floor(100 / pidterm)
+    //    taskENTER_CRITICAL();
+
+    PWMPulseWidthSet(PWM0_BASE, PWM_OUT_0, floor(5000 / (100 / pidterm)));
+    // TimerMatchSet(TIMER1_BASE, TIMER_A, floor(Period / (uint32_t)(100 / pidterm)) -1);
+    //
+    //    taskEXIT_CRITICAL();
+    return 0;
+}
+void PID_ctrl(void *pvParameters)
+{
+    TickType_t xLastWakeTime;
+    static const uint32_t dc_motor_err_lim = 2;
+    static const uint32_t Kp = 3, Ki = 1, Kd = 0;
+    //float Kp = 0.3, Ki = 0.1, Kd = 0;
+    xLastWakeTime = xTaskGetTickCount();
+    const TickType_t SleepTime = pdMS_TO_TICKS(5);  //90 MS
+    //initMotors();
+    UARTprintf("pid init\n\t");
+    initDCmotor();
+    uint32_t current_position;
+    int error, changeError;
+    int pidterm = 0;
+    // char buffer[20];
+    for(;;)
+    {
+        //        UARTprintf("Pos: %u",dc_target_position);
+        //        bool enabled = dc_on;
+        //        UARTprintf("dc_on: %u", dc_on);
+        current_position = QEIPositionGet(QEI0_BASE);
+
+        UARTprintf("target: %u current: %u", dc_target_position, current_position);
+        error = dc_target_position - current_position;
+        // UARTprintf("error: %i\n\t",error);
+        changeError = error - last_error; // derivative term
+        totalError += floor(error / 3); //accumalate errors to find integral term
+        //UARTprintf("Totalerror: %u",totalError);
+        pidterm = (Kp * error) + (Ki * totalError) + (Kd * changeError);//total gain
+        UARTprintf("pidterm before: %i\n\t", pidterm);
+        pidterm = floor(pidterm / 15);
+        UARTprintf("pidterm after: %i\n\t", pidterm);
+        //        sprintf(buffer, "pidterm: %f\n\t", pidterm);
+        //        UARTprintf(buffer);
+        int duty = setDutyCycle(pidterm);//make sure it's a positive value
+        last_error = error;
+        if(abs(error) < dc_motor_err_lim)
+        {
+            //            enabled = false;
+            //PWMcontroller(enabled);
+            // PWMGenDisable(PWM0_BASE, PWM_GEN_0);
+            PWMPulseWidthSet(PWM0_BASE, PWM_OUT_0, 5); //Duty cycle on 0.01%
+            UARTprintf("DC DONE!");
+            //send to transceive queue
+            // GPIOPinWrite(GPIO_PORTA_BASE, GPIO_PIN_5, 0);  //High
+            QEIPositionSet(QEI0_BASE, 166);
+           // xQueueSendToBack(QueH1,&(int)dc_target_position,0);
+            vTaskSuspend(PID_Controller);
+            totalError = 0;
+
+        }
+        else if(error < 0)
+        {
+            // PWMGenEnable(PWM0_BASE, PWM_GEN_0);
+            //dc_direction = 1;
+            //PWMPulseWidthSet(PWM0_BASE,PWM_OUT_0,50);
+            GPIOPinWrite(GPIO_PORTB_BASE, GPIO_PIN_4, 0);  //High
+            //            enabled = true;
+
+
+        }
+        else
+        {
+            // PWMGenEnable(PWM0_BASE, PWM_GEN_0);
+            // dc_direction = 0;
+            GPIOPinWrite(GPIO_PORTB_BASE, GPIO_PIN_4, GPIO_PIN_4);  //Low
+            //            enabled = true;
+
+
+        }
+        //90MS til sleep.
+
+        //        UARTprintf("dc_position: %u\n\t", current_position);
+        //        taskENTER_CRITICAL();
+        //        dc_on = enabled;
+        //        taskEXIT_CRITICAL();
+        vTaskDelayUntil(&xLastWakeTime,SleepTime);
+    }
+}
+//Motor tasks shall enter here. CAN RX and TX too.
+void initiliaze_tasks(void)
+{
+    UARTprintf("Init tasks\n\t");
+    xSemaphore = xSemaphoreCreateMutex();
+    xSemaphore_rec = xSemaphoreCreateMutex();
+    //Pid controller for DC motor
+    xTaskCreate(PID_ctrl,"PID",configMINIMAL_STACK_SIZE,NULL,tskIDLE_PRIORITY+1,&PID_Controller);
+    //    vTaskSuspend(PID_Controller);
+    //Transceive a message
+
+    //vTaskSuspend(CANtransceive);
+    //Controls the stepper motors and generate pulses. 3 stepper motors.
+
+    //vTaskSuspend(MotorOne);
+    //Receives messages from the jetson tx2 and handles them for pulse control.
+    xTaskCreate(CANreceiver,"RX",configMINIMAL_STACK_SIZE,NULL,tskIDLE_PRIORITY+1,&CANreceive);
+    xTaskCreate(MotorControl_one,"Motors",configMINIMAL_STACK_SIZE+50,NULL,tskIDLE_PRIORITY+1,&MotorOne);
+    //    vTaskSuspend(MotorOne);
+    xTaskCreate(CANtransciever,"TX",configMINIMAL_STACK_SIZE,NULL,tskIDLE_PRIORITY+1,&CANtransceive);
+    vTaskSuspend(CANtransceive);
+    vTaskStartScheduler();
+}
+
+//xSemaphoreHandle g_pUARTSemaphore;
+//*****************************************************************************
+//
+// This hook is called by FreeRTOS when an stack overflow error is detected.
+//
+//*****************************************************************************
+void
+vApplicationStackOverflowHook(xTaskHandle *pxTask, char *pcTaskName)
+{
+    //
+    // This function can not return, so loop forever.  Interrupts are disabled
+    // on entry to this function, so no processor interrupts will interrupt
+    // this loop.
+    //
+    UARTprintf("stack overflow!\n\t");
+    while(1)
+    {
+
+    }
+}
+
+
+// The error routine that is called if the driver library encounters an error.
+#ifdef DEBUG
+void
+__error__(char *pcFilename, uint32_t ui32Line)
+{
+}
+
+#endif
+void init_UART(void)
+{
+
+
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOA);
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_UART0);
+    SysCtlDelay(2000);
+
+
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOF);
+
+    SysCtlDelay(50000);
+    /*This enables PF0 as GPIO*/
+    HWREG(GPIO_PORTF_BASE + GPIO_O_LOCK) = GPIO_LOCK_KEY;
+    HWREG(GPIO_PORTF_BASE + GPIO_O_CR) = 0x01;
+    HWREG(GPIO_PORTF_BASE + GPIO_O_AFSEL) &= ~0x01;
+    HWREG(GPIO_PORTF_BASE + GPIO_O_LOCK) = 0;
+    /*      Locks PF0 for use as GPIO          */
+    GPIOPinTypeGPIOOutput(GPIO_PORTF_BASE,GPIO_PIN_4);
+    // GPIOPinWrite(GPIO_PORTC_BASE,GPIO_PIN_4, 0);
+    GPIOPinWrite(GPIO_PORTF_BASE,GPIO_PIN_4, GPIO_PIN_4);
+    GPIOPinTypeGPIOOutput(GPIO_PORTF_BASE, GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2);//PF0,PF1,PF2
+    GPIOPinWrite(GPIO_PORTF_BASE,GPIO_PIN_1, GPIO_PIN_1);
+
+    GPIOPinTypeGPIOOutput(GPIO_PORTA_BASE, GPIO_PIN_2);  // A2 - PF0, byte 0 and 1 -> Motor1
+    GPIOPinWrite(GPIO_PORTA_BASE,GPIO_PIN_2, GPIO_PIN_2);  //
+
+    GPIOPinTypeGPIOOutput(GPIO_PORTA_BASE, GPIO_PIN_3);  // A3 - PF1, byte 2 and 3 -> Motor2
+    GPIOPinWrite(GPIO_PORTA_BASE,GPIO_PIN_3, GPIO_PIN_3);  //
+    GPIOPinTypeGPIOOutput(GPIO_PORTA_BASE, GPIO_PIN_4);  // A4 - PF2, byte 4 and 5 -> Motor3
+    GPIOPinWrite(GPIO_PORTA_BASE,GPIO_PIN_4, GPIO_PIN_4);  //
+
+    GPIOPinTypeGPIOOutput(GPIO_PORTF_BASE, GPIO_PIN_3);  // PF3 - PA5 DC motor, byte 6 and 7 -> DC motor.
+    GPIOPinWrite(GPIO_PORTF_BASE,GPIO_PIN_3, 0);  //
+    GPIOPinTypeGPIOOutput(GPIO_PORTA_BASE, GPIO_PIN_5);  // PA5 - DC motor - Direction
+    GPIOPinWrite(GPIO_PORTA_BASE,GPIO_PIN_5, GPIO_PIN_5);  //
+
+
+    GPIOPinConfigure(GPIO_PA0_U0RX);
+    GPIOPinConfigure(GPIO_PA1_U0TX);
+    GPIOPinTypeUART(GPIO_PORTA_BASE, GPIO_PIN_0 | GPIO_PIN_1);
+    UARTClockSourceSet(UART0_BASE, UART_CLOCK_PIOSC);
+    UARTStdioConfig(0, 115200, 16000000);
+    UARTprintf("init uart");
+}
+void CANIntHandler(void)
+{
+    UARTprintf("canIntHandler");
+    uint32_t ui32Status;
+    ui32Status = CANIntStatus(CAN0_BASE, CAN_INT_STS_CAUSE); //Reads the interrupt handler.
+
+
+    if(ui32Status == CAN_INT_INTID_STATUS)  //If controller status is wrong, get the status.
+    {
+        ui32Status = CANStatusGet(CAN0_BASE, CAN_STS_CONTROL);
+        g_bErrFlag = 1; //Error occured
+    }
+    else if(ui32Status == 1) //Check if the cause is message object 1, which is being used for sending messages
+    {
+        CANIntClear(CAN0_BASE, 1);
+        rxFlag = 1; //received msg is pending.
+        g_ui32MsgCount++;  //Counter, keeping track of how many messages has been sent. Could use flag instead.
+        g_bErrFlag = 0; //Since message was sent, clear error flag.
+    }
+    else if(ui32Status == 2) //Check if the cause is message object 1, which is being used for sending messages
+    {
+        CANIntClear(CAN0_BASE, 2);
+        txFlag = 1;
+        g_ui32MsgCount++;  //Counter, keeping track of how many messages has been sent. Could use flag instead.
+        g_bErrFlag = 0; //Since message was sent, clear error flag.
+    }
+
+    else //should not enter here. Otherwise something retarded just happened.
+    {
+        // Spurious interrupt handling can go here.
+    }
+}
+
+void init_CAN0peripherals(void)
+{
+    //Initializing CAN0
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOE);  //Enable E port for pins PE4-RX and PE5-TX
+    //SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOB);  //Enable B port for pins PB4-RX and PB5-TX
+    GPIOPinConfigure(GPIO_PE4_CAN0RX);  //Will use PE4 and PE5 for Receive and Transceive
+    GPIOPinConfigure(GPIO_PE5_CAN0TX);  // -||-
+    GPIOPinTypeCAN(GPIO_PORTE_BASE, GPIO_PIN_4 | GPIO_PIN_5);
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_CAN0);
+    CANInit(CAN0_BASE);  //Starts the CAN controller
+    CANBitRateSet(CAN0_BASE, SysCtlClockGet(), 1000000);  //CAN bus set to 500kHZ or 1MHz
+    CANIntRegister(CAN0_BASE, CANIntHandler); // if using dynamic vectors
+    CANIntEnable(CAN0_BASE, CAN_INT_MASTER | CAN_INT_ERROR | CAN_INT_STATUS);
+    IntEnable(INT_CAN0);  //Enable the CAN interrupt on tep processor (NVIC)
+    CANEnable(CAN0_BASE);  //Enable CAN for operation
+    // End of CAN0 initializing
+}
+int main(void)
+{
+    SysCtlClockSet(SYSCTL_SYSDIV_4|SYSCTL_USE_PLL|SYSCTL_OSC_MAIN|SYSCTL_XTAL_16MHZ); //50 MHz clock with PLL
+    // IntMasterEnable(); // Enable the processor to respond to interrupts.
+    init_CAN0peripherals();
+    init_UART();
+    UARTprintf("main");
+    QueH1 = xQueueCreate(15,sizeof(int));  //Checks ID's.
+    QueH = xQueueCreate(100,sizeof(struct canMsgs));  //Creating que.
+    //  TickType_t test2;
+    //  test2 = test1;
+
+    initiliaze_tasks();
+    while(1)
+    {
+
+    }
+
+}
+
+
