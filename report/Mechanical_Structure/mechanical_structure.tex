@@ -1,0 +1,279 @@
+\section{Mechanical Structure - Per Ekstr\"om}
+
+One of the most fundamental parts of any robot is the mechanical structure, since the mechanical structure defines and limits the robot in what it can achieve physically. Below, the mechanical structure and the thought process behind it is described in great detail.
+
+\subsection{Requirements}
+
+Since the butler is supposed to compete at the RoboCup@HOME challenge\cite{robocup-rulebook}, the mechanical design will at the very least have to meet the requirements of that challenge. The relevant rules are:
+
+\begin{itemize}
+    \item The robot's internal hardware (electronics and wiring) must be covered up in an appealing way.
+    \item Absolutely \textbf{no} duct tape on the outside!
+    \item There may not be any loose cables hanging out of the robot.
+    \item The robot may not have any sharp edges or other defects that could result in injury, human or otherwise.
+    \item No constant annoying loud noises or blinding lights.
+    \item The robot should not exceed the dimensions of a standard door (200cm x 70cm).
+    \item There is no specific weight limit, but the robot should be lightweight enough for the participating team to be able to carry it off-stage in case of failure.
+    \item The robot must have an emergency stop button and a speaker output plug.
+\end{itemize}
+
+% Describe the mechanical requirements for the competition here
+
+\subsection{Previous work}
+
+Previous year students have also attempted to build a butler, and the original plan was to build upon their work. However, the butler mechanical platform was inherited in such a state it could not be used to achieve the goals set for this project.
+
+\subsubsection{Platform}
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=0.75\textwidth]{Mechanical_Structure/old-butler-platform.jpg}
+    \caption{The platform the previous year students built.}
+    \label{fig:old_butler_platform}
+\end{figure}
+
+The platform designed by previous year students was a low, sturdy and very bulky square base plate with four wheels, see figure \ref{fig:old_butler_platform}. The general design worked as advertised, but the platform is so heavy it cannot pass a bigger cable or threshold, and it also moves very slowly. The width also makes it difficult to pass through a regular door frame, though not impossible.
+
+\subsubsection{Torso}
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=0.75\textwidth]{Mechanical_Structure/old-butler-arm-torso.jpg}
+    \caption{The left image is the torso the previous year students built, while the right image is the 6 DOF arm.}
+    \label{fig:old_butler_arm_torso}
+\end{figure}
+
+The torso on the old butler was very basic, but filled it's function remarkably well, see figure \ref{fig:old_butler_arm_torso}. It had one degree of freedom, up and down, but the lowest point is sitting quite a ways up, which meant that the butler could not reach and grasp things at the floor, at least not without a very long arm.
+
+\subsubsection{Arm}
+
+The arm on the old butler can be seen in figure \ref{fig:old_butler_arm_torso}. While the arm has six degrees of freedom and is built with a very sturdy frame, it was very bulky and would be difficult to encase within plastic, which is a requirement of the competition. It also failed the width requirement, since the arm made the robot have a total width of 80 cm even before a casing would have been added. This meant the robot would not be able to fit through a standard doorway.
+
+Further complicating the issue, the robot arm was quite inaccurate as described in the report, and the weight was very heavy. It was also somewhat inaccurate, and the screws needed to be adjusted every fifth run or so. In conclusion, the arm would not make it into the competition in its current state.
+
+\subsubsection{Gripper}
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=0.75\textwidth]{Mechanical_Structure/old-butler-gripper.jpg}
+    \caption{The gripper the previous year students built.}
+    \label{fig:old_butler_gripper}
+\end{figure}
+
+A gripper prototype has been developed by previous year students, see figure \ref{fig:old_butler_gripper}. Initially it was thought this gripper should merely be mounted to the old butler. After some further research it was concluded that the gripper is currently inadequate at gripping any type of round object, like a ball or cup of coffee, and is not suitable for the purposes of this project. It is a good proof of concept to show the gripping mechanisms and algorithms developed, but a new version must be developed.
+
+\subsection{Design}
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=0.75\textwidth]{Mechanical_Structure/butler-overview.PNG}
+    \caption{An overview of the finished butler design once mounted to the Husqvarna lawn mower. The actual work performed has been on the tower-like structure.}
+    \label{fig:butler_overview}
+\end{figure}
+
+Given the requirements and considerations from above, two options presented themselves. One was to build upon the work of previous year students, and the other one was to start over. Given that a full redesign would have to be made at some point in time in either case to fulfil the goals of the competition, the decision was made to start over completely and take the hit this year rather than continuing to chase after an unrealistic goal. In this section, the design choices and general thinking of the final design will be presented. The final design can be found in figure \ref{fig:butler_overview}.
+
+\subsubsection{Design goals}
+
+The new butler has been designed with several key aspects in mind. It should be easy to modify, so that later year students can rework any part of the design, but also so that there is easy access to engines and other parts. It should also be lightweight, yet built to be durable and last a very long time.
+
+The new butler frame has been designed to be able to carry a payload of at least 5 kg, but in practice the motors are the limiting factor here. The frame itself is designed to weigh no more than 20 kg and the robot platform has been tested to hold and operate for at least 24 kg. Since the empty platform itself weigh 7 kg, this means the robot should weigh no more than 30-35 kg in total.
+
+The robot frame should also be designed for internal wiring from the get-go, since it is much easier to hide wires in a robot that was designed for it from the beginning.
+
+And finally the butler should be designed for ease of manufacturing and use as much off-the-shelf parts as possible. This is mainly to save time, which is the most precious resource in this project, but also because off-the-shelf parts have already been tested for durability and safety requirements.
+
+\subsubsection{Inspiration}
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=0.75\textwidth]{Mechanical_Structure/toyota-hsr.jpg}
+    \caption{The Toyota HSR robot that was used as inspirational base for this robot.}
+    \label{fig:toyota_hsr}
+\end{figure}
+
+The main inspiration for this robot has come from the Toyota HSR as shown in figure \ref{fig:toyota_hsr}. The HSR is the platform for the Domestic Standard Platform League in the competition. It has a single arm and is quite capable, though the new platform has a much more simple but robust arm. This is because we have no rotational joints, only hinge style joints, which makes it easier to fixate the arm and provides a much more robust operation.
+
+Much of the inspiration also comes from industrial robotics and industry arms, but the decision was made to place as many motors as possible outside the arm in order to make it more lightweight, and control the second link through a driving belt from the base instead.
+
+There were some preliminary research into HERB \cite{Srinivasa2009} for the gripper mechanics but due to time constraints, nothing ever came of it.
+
+% Toyota robot
+% HERB
+% inMoov
+% Pepper
+
+\subsubsection{Platform}
+
+At the base of the butler robot, there is a Husqvarna mobile autonomous lawnmower, with the top removed and replaced with a base plate made of transparent plastic. This allows for drilling holes and attaching mount points without having to worry about damaging or destroying the Husqvarna base.
+
+The base in and of itself is very capable, and is tested to be able to carry loads of 25 kg. It is manoeuvred by two driving wheels operated with a differential drive, with two swivel caster wheels in the front for extra support.
+
+\subsubsection{Torso}
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=0.75\textwidth]{Mechanical_Structure/turn_plate_mechanics.PNG}
+    \caption{The mechanics design of the gear housing. The turnplate is on top of the axial bearing layer, with two engines driving the turn plate and ball screw respectively. The big gear im the middle drives the ball screw, the outer spur gear drives the turntable mechanism and the smaller gears are mounted to the engines and actually provide the motion required.}
+    \label{fig:turn_plate_mechanics}
+\end{figure}
+
+The torso is built mostly from purchased parts, and have two degrees of freedom. At the bottom, there is a cylindrical gear box casing that house some gears which drives the turntable and ball screw, see figure \ref{fig:turn_plate_mechanics}. On top of that is a Lazy Susan style axial bearing layer\footnote{http://nomo2011.auderis.se/Default.asp?page=nyheter\_arkiv\_visa.asp\&wer=58} which produces nearly friction-free circular motion, and then the turn plate upon which everything else is mounted.
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=0.75\textwidth]{Mechanical_Structure/butler_arm_base_plate.PNG}
+    \caption{The mechanics design of the arm base plate. The large motor in the back, m1, drives the first arm link and the outer part of the joint while the smaller motor m2 drives the inner part of the joint and, through a belt, also the second link movement.}
+    \label{fig:arm_base_plate}
+\end{figure}
+
+In the middle of the turn plate, there is a ball screw that drives a plate up and down. This plate is where the arm is attached, see figure \ref{fig:arm_base_plate}. On the sides, four C-rails provide guidance and stability to the entire design, providing a smooth vertical motion that allows the arm to move up and down. Everything is tied together at the top with a plate that offers stability to the whole construction.
+
+This design is very lightweight, yet still heavy enough to provide a sturdy and stable base of which to perform lifts from. It is also quite simple in it's design, which is great because simple is easy to understand and easy to expand and build.
+    
+% Rotating base plate
+% C-rails
+% Ball screw
+% Gear housing in base
+
+\subsubsection{Arm}
+
+The arm can be divided into two sections - first and second link - and both are driven from the base plate in the middle of the elevator, according to figure \ref{fig:arm_mechanics}. It offers two degrees of freedom and is attached to the base plate by two ball bearing layers. Another set of ball bearing layers connect the first link to the second one, and both links are driven with gear belts from the base plate.
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=1.0 \textwidth]{Mechanical_Structure/butler_arm.PNG}
+    \caption{The mechanical design of the arm. The image to the top left depicts how the arm base joint is put together, with the double axis mechanism, as well as the belt pulleys. The image to the top right shows the design of the second joint, which is controlled by the belt pulley. Finally the bottom image shows how the entire arm is assembled and put together. Not shown are the threaded rods that binds the arm together.}
+    \label{fig:arm_mechanics}
+\end{figure}
+
+The two links are both held together by threaded rods, a design that also allows for adjusting any smaller imperfections that may arise. The second link is fastened by a cap, which makes sure the axis of the second link is centred. Similarly, the second link drive axis in the base may be adjusted if the need arises.
+
+Both arm links are designed to be very lightweight, and use a lattice structure to achieve this work. This is also the reason the engines are placed outside the arms themselves, so they can be more lightweight.
+
+% Three degrees of Freedom
+% First and second degree from the same base
+% Lightweight
+
+\subsubsection{Gripper}
+
+A decision was made to delay the gripper until the other parts were made. Unfortunately, this meant the gripper could not be designed, nor implemented in this project. Hopefully this can be sorted out in the future by others. The gripper should be able to rotate like a wrist, but only a basic design has been done during the project, and it has not been implemented.
+
+\subsection{Implementation}
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=0.75\textwidth]{Mechanical_Structure/measurements.png}
+    \caption{The final version for various relevant measurements for the butler robot. The travel distance is for the first axis of the first arm link.}
+    \label{fig:final_version}
+\end{figure}
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=0.75\textwidth]{Mechanical_Structure/final_result.jpg}
+    \caption{The final version of the new butler torso and arm, with everything on it assembled.}
+    \label{fig:mechanical_measurements}
+\end{figure}
+
+Building and implementing this construction with five degrees of freedom is not a small task. Due to the way it is constructed, extra care has to be taken on having precise measurements. In some parts, especially the turntable base part, there is very little room for error. Care has been taken in the design to allow for some adjustments of the imperfections that arise, but still provide a solid and rigid structure.
+
+The work took a while to get started, but once the design part was over and done with and manufacturing and assembly started, things did move fairly quickly. The first focus was on getting the arm built, but it quickly became apparent that the arm base plate had to be manufactured and assembled first, and due to that limitation, the torso also had to be manufactured.
+
+Going over the torso, it took several iterations to come up with the current design. It was decided early on to use C-rails for steering and a ball screw for moving the robot up and down, which give the robot a very rigid structure for the torso. 
+
+Some parts of the design did not fall into place until later. In particular, gears had to be ordered and accounted for, as did placement of the engines. This lead to a few problems in fitting the gearing with what was already available.
+
+Also, while implementing the design, the decision was made to break several complex parts into more easily manufactured pieces. This is something that should have been thought of from the start, but did not really effect the project as a whole.
+
+As for materials, most of the parts are manufactured in milled aluminium or bent steel plates. A couple of parts are created by milled plastic, and the motor mounts were created in the 3D printer. However, a new iteration of the 3D printed parts must be created since their durability leaves a bit to be desired.
+
+Unfortunately there were no time to implement the wrist joint, which is the biggest part left for future projects.
+
+For the appropriate final measurements, see figure \ref{fig:mechanical_measurements}. As for the gear exchange ratios, these can be seen according to table \ref{table:gearing}.
+
+\begin{table}[!ht]
+    \centering
+    \begin{tabular}{l l r r r}
+        \multicolumn{1}{c}{\bfseries Joint} & \multicolumn{1}{c}{\bfseries Motor} & \multicolumn{1}{c}{\bfseries Driving} & \multicolumn{1}{c}{\bfseries Receiving} & \multicolumn{1}{c}{\bfseries Ratio} \\ %\hline
+        First link belt & m1 & 30 & 30 & 1:1 \\
+        Drive axis & m2 & 15 & 30 & 2:1 \\
+        Drive axis belt & m2 & 19 & 19 & 1:1 \\
+        Ball screw & m4 & 20 & 40 & 2:1 \\
+        Turn plate & m5 & 20 & 80 & 4:1
+    \end{tabular}
+    \caption{The gearing exchanges for the various joints. Columns driving and receiving refers to the number of teeth on the driving gear vs the receiving gear.}
+    \label{table:gearing}
+\end{table}
+
+% FEMA analysis
+% Calculations
+% Manufacturing process
+% No third DOF
+
+\subsection{Discussion}
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=1.0\textwidth]{Mechanical_Structure/new_joints.png}
+    \caption{The implemented joints vs the new, improved and more easy to manufacture joints. The left side show the current joints and the right side show the improved joints. This change requires new link frames to be manufactured, however. At the top, the first link is shown and at the bottom is the second link.}
+    \label{fig:new_joints}
+\end{figure}
+
+The biggest problem faced in the mechanics department was the lack of direction during the first five weeks of the project. Since the decision had not yet been set of whether or not a complete overhaul should be attempted, the mechanics department was stuck with a difficult decision to either work on what already existed, or start over from scratch, and this took a lot of time to evaluate.
+
+The project started with the arm, something that, in hindsight, may not have been the best move. The arm frame was quickly built and manufactured, but in doing so, the project also locked itself in a certain solution which may not have been the best move. In particular, it was very hard to then come up with a satisfying solution to the arm base axis and moving the arm in a way that prevented it from slipping and gliding. This was eventually solved with glue. A better solution has now been designed as can be seen in figure \ref{fig:new_joints} but has yet to be manufactured and tested.
+
+Apart from that, most of the things work just fine. The structure is rigid for the most part, which was one of the goals, but the middle joint on the arm is a bit loose. This issue can be solved by a slight redesign of the axis, but it has not been done due to time constraints.
+
+One slight miss is that the gear controlling the ball screw axis is a bit wobbly, due to not having the proper axis dimensions (12mm instead of 10mm). This has been rectified by 3D-printing a part and adding more stop screws, but there is still a slight wobble.
+
+The goal of being lightweight was one area where the project excelled. The entire butler frame, engines and all, weigh in at only 14.5 kg, and the stripped down base adds an additional 7.5 kg to that, bringing the total current weight to only about 22 kg - well below expectations. This is however without cabling, sensors and circuit boards mounted, so the total weight will be around 30 kg all in all.
+
+One lesson learned is to start researching gears and other mechanical parts that you are going to buy first, and build your design from that. The workshop in Eskilstuna is powerful and can provide with a lot of help, but it cannot do everything.
+
+Another thing that was noticed during the course of the project is that since the motor driving the second link is not attached to the arm, turning the first link will also turn the second link. This can however be corrected either in software or through a special drive mode in the electronics side.
+
+Quite a few minor issues with the arm base platform and arm attachment remains. Had this project kept on for a couple more weeks, these issues would have undoubtedly been taken care of, but as it stands, it is not quite good enough. For the turntable base, everything works with the exception of the inner spur gear being slightly too high by a millimetre or two. This can be easily fixed by lowering the spur gear slightly, for instance by milling an indentation in the bottom plate. 
+
+As for the rest of the issues, almost all of them have to do with the base plate not being large enough for the motors. A new version should be designed and manufactured, perhaps stacking the motors on top of each other.
+
+On a final note, it is very important to double-check that the measurements of the data sheet are the same as the measurements in the real world. A couple of engine measurements were wrong here, but nothing a few extra holes and a little redesign could not fix.
+
+
+% Everything works as intended
+% A few parts needs adjustments
+% Ball screw axis
+% First link axis
+% Second link axis cap
+% Inaccurate data sheets
+
+\subsection{Future work and conclusions}
+
+Like any project, there will always be things to improve upon. Below is a list of the most prominent improvements, in no particular order. 
+
+\begin{itemize}
+    \item Cables must be drawn
+    \item Circuit board mounts have yet to be designed
+    \item Camera mount for the stereo camera has to be designed, but mounting holes exist
+    \item Improve the middle joint of the arm
+    \item Building a case for the entire construction frame
+    \item A new gripper must be designed and manufactured
+    \item The arm base plate should be redesigned from the ground up, placing the motors in a better fashion
+    \item Drive belts must be tightened up somehow
+    \item The frames for the first and second link in the arm should be remade with the new design for the joints
+\end{itemize}
+
+Hopefully these improvements will be able to get done by others in the future. In conclusion, there are a lot of improvements to be made, but the mechanical platform also holds a lot of promise for the future.
+
+
+% \newpage
+
+%Suggestions for subsections - don't forget to include calculations that has been made.
+
+%\subsection{Introduction/Background}
+%\subsection{Requirements}
+%\subsection{Overview}
+%\subsection{Design}
+%Motivate design - reference inspirations
+%\subsection{Implementation}
+%\subsection{Conclusions/future work/discussion}

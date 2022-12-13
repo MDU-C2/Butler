@@ -1,0 +1,26 @@
+\section{Development and Simulation Tools}
+\subsection{ROS - Alexander Karlsson, Niclas Holmqvist}
+The Robot Operating System\footnote{\url{http://www.ros.org/}} (ROS) is an open-source (BSD) collection of libraries and tools for developing robotic systems \cite{quigley2009ros}, where the main idea is to be able to reuse code for different purposes and contribute new innovations to the community. The core functionality is built around a peer-to-peer network of processes called "nodes" that communicates with each other by sending messages with the help of a master, which provides services such as name registration and lookup-tables in the network. These messages may be advertised as a topic or a service who shares some similarities but are very different. In both cases the name of the topic/service is used to identify its contents on the network but they are based on different semantics, where the topics are built around publishing and subscribing. A topic may be compared to a bus where anyone connected to it is able to access the messages and multiple nodes may subscribe to the same topic at one time. In comparison a service is based around requesting and replying where the request may be comprised of a different message type than the reply. The connection between nodes is a type of TCP/IP protocol called TCPROS/UDPROS which is initiated by the master after a node makes a subscription request for a specific topic/service name. This architecture allows for a good oversight in large complex systems containing lots of sensors and actuators whose processes are decoupled which means that nodes may be restarted or killed without affecting the other nodes in the network. In addition it enables high modularity of systems where nodes are interchangeable and the only strict policy is regarding the various names of topics and services, as to avoid duplicate names and to use namespaces to separate subsystems. Although one of the purposes of ROS is ease of use the learning curve is quite steep, however once fully versed with the topology and concepts it decreases developing time considerably.
+%\subsection{Sensor Integration}
+%\subsubsection{Camera}
+
+
+%\subsubsection{Encoders - subsub needed?}
+\subsection{Gazebo}
+Gazebo\footnote{\url{http://gazebosim.org/}} is a free simulation tool targeted at robotics developers and features the creation of worlds that may be populated with agents in order to test algorithms using a robust physics engine with a programmatic in addition to a graphical interface. This includes rendering 3D graphics as well as generating sensor data such as pointclouds and range finders in the simulated environment which is described by a Simulated Description Format (SDF). A simple world was created in Gazebo using boxes and cones to test the effectiveness and help tune the navigation stack of Charlie. The robot is modeled using a Universal Robitic Description Format (URDF) which has support in Gazebo where it converts it to include in a SDF. The URDF was provided by HRP and contained a 3D model of the platform as well as physical properties of wheels, sensors, transmissions, a plugin for the controller, and sensors such as wheelencoders, an imu, and a gps. This was extended during the course of this project to include a Lidar, a stereo-camera, multiple ultrasonic range finders, in addition to substituting the model of the chassis to reflect the remodel of the platform.  
+\subsection{Rviz}
+Rviz\footnote{\url{http://wiki.ros.org/rviz}} is a 3D visualizer created for displaying various types of sensor data as well as agent states in relation to the world. With this tool it is possible to visualize multiple ROS topics such as odometry, pointcloud, and camera images, in addition to custom shapes called markers. It is a tremendous resource when debugging the entire connected ROS system and has been used continously throughout the course of this project. The static transformations between the agent and sensor frames as well as the output of the Lidar and stereo-camera may be analysed during runtime from any host connected to the network. 
+
+% \subsection{MATLAB}
+
+% Alexander Karlsson, akn13013
+
+% \medskip
+% \noindent
+
+ 
+% \subsubsection{REPs}
+% Because ROS is an open-source project with a lot of community collaborators all over the world the development is controlled using ROS Enhancement Proposals\footnote{\url{http://www.ros.org/reps/rep-0000.html}} (REPs). These represent guidelines as well as new proposals for everything from naming conventions in packages to standard units of measure and coordinate frames for mobile or humanoid robots. ?
+% \subsection{Gazebo}
+
+% \subsection{RViz}

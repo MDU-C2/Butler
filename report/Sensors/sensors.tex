@@ -1,0 +1,52 @@
+% \section{Sensors - Billy Lindgren(move?)}
+\subsection{Camera - Billy Lindgren}
+
+\medskip
+
+\noindent
+
+For the robot to be able to avoid obstacles that are not detected by the LIDAR, a camera was mounted to the front of the robot. To be able to calculate a correct distance to the found hindrance some form of a stereo camera was needed to be used, either an active stereo camera or a passive one. The cameras that were under investigation were the ZED stereo camera from Stereolabs \cite{ZEDcamera} and Astra Pro from ORBBEC \cite{AstraPro}.
+
+\subsubsection{Performance and Limitations of the ZED, a passive stereo camera}
+\noindent
+The ZED requires a USB 3.0 port and sends data at targeted device and has a frame rate at 100 fps with the quality 640x480 of the images. The data speed sets a limitation on the usage of the USB bus and it is preferred that the ZED is the only device on a USB port and not use a USB-hub to obtain more port.
+
+A limitation is that the ZED draws power from the USB port that limits the usage of the Jetson and is limiting the use of USB-hubs significantly, thus only USB-hubs that have an external power source should be used to limit the power consumption from the Jetson. However, a USB-hub us not recommended at all, due to the amount of data the ZED provides through the bus. Since the ZED is a passive stereo camera it performs poorly in dark environments, due to the fact a ZED consists of 2 monocular cameras light is needed to get a clear picture.
+
+\subsubsection{Performance and Limitations of Astra PRO, an active stereo camera}
+\noindent
+The data transfer speed of the Astra pro is 27Mb/s and it provides 30 fps with the quality 640x480. The quality can be set higher, but the frame rate will drop equally as much. i.e. if the quality is increased to 1280x720 the frame rate will be lowered to 10 fps. The difference is linear if the quality is 3 times higher the frame rate will be divided by 3.
+ 
+Astra pro contains an IR-sensor and a monocular RGB camera. Since it uses an IR-sensor it performs poorly in sunlight due to noise that occurs when the sensor picks up the IR-beams the sun emits.
+ 
+\subsubsection{Point Cloud Differences}
+ 
+There is some differences between the point clouds from the cameras. The Astra Pro's point cloud is a more accurate point cloud and less sensitive due to the utilization of the IR-sensor to measure the depth in the image, while the RGB camera is used for gathering data of how the environment looks like. These sensor data are then fused into an accurate point cloud. The ZED point cloud
+is in that manner more sensitive due to the fact that the ZED is 2 RGB cameras, whose images are overlapping to create a 3D image, by calculating the depth instead of measuring it. This makes the ZED more computational heavy due to more calculations than the Astra Pro and creates a less accurate point cloud.
+
+
+\subsubsection{Discussion}
+One can argue that one camera is the better than the other, but it depends on the environment the camera is going to operate in. Since the camera will operate in an ordinary indoor environment, the performance and requirements of the Astra Pro make it more preferable than the ZED. The ZED outperforms the Astra Pro though, in terms of video quality and frame rate and thanks to the high frame rate of the ZED, fast moving objects can be easier detected.
+
+ 
+\subsubsection{Conclusion} 
+It was concluded that the Astra Pro is more suited than the ZED for the Butler project due to the more sensitive and accurate point cloud that can be utilised for grabbing a cup in the sense of knowing how far away the cup is.  
+ 
+
+
+
+% \subsection{Lidar}
+% Why Lidar?
+% About the SICK Lidar
+% \subsubsection{Advantages}
+% \subsubsection{Disadvantages}
+% \subsection{Stereo Camera}
+% Why Stereo Camera?
+% About ZED
+% \subsubsection{Advantages}
+% \subsubsection{Disadvantages}
+% \subsection{Ultrasonic Rangefinders}
+% Why Ultrasonic Rangefinders?
+% Ultrasonic Sensor System
+% \subsubsection{Advantages}
+% \subsubsection{Disadvantages}

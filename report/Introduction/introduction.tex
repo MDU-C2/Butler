@@ -1,0 +1,215 @@
+\section{Project Description - Henrik Falk}
+MDH@HOME with the robot named Butler is a project realised by students at Mälardalen University. The project aims to build a Human Services Robot (HSR) together with Volvo CE in Eskilstuna. It is a project that spans over 5 years with the end goal of running a robot café autonomously. This report presents the development for the project's third year.
+
+\subsection{Background}
+The project was initialised during the fall of 2015 with a the aim of creating a HSR that would be able to compete in RoboCup@HOME. At the start of this project there existed a \say{go and grasp}-task within the competition. The MDH@HOME Butler aims to be the quickest at go and grasp.
+\subsubsection{2015 Base Development}
+During the projects first year the goals were to build the mechanical base of the robot, a torso, a simple two degrees of freedom (2-DOF) gripper, a vision system for object detection, navigation/localisation, and a power supply unit. \\
+\indent The proposed method of accomplishing these goals was to have an Intel NUC as a main computer, Kinect V2 for vision, a motorised table leg as torso, construction of a mechanical base in-house, and to design a power supply unit.
+The base software selected to accomplish the tasks were Matlab and Simulink. These would run on the Intel NUC and it would be integrated with the surrounding systems and sensors.
+
+\subsubsection{2016 Arm Development}
+The work continued with the development of the next stage of the robot, the arm. The aim was to build a 6-DOF arm with as many off-the-shelf parts as possible and mount it on the platform. Additionally to comply with the rules of RoboCup@HOME, the wiring would be placed on the outside of the arm and encapsulated before the competition. \\
+\indent The kinematics would be developed for the arm and the control of the joints would be accomplished by using PID controllers. To achieve feedback of the current pose, incremental encoders were implemented.
+
+
+\subsection{Request}
+The request for this year is to finalise the path taken from the previous year's. The deliverables is defined by one of the requesters as:
+
+\begin{itemize}
+    \item Intel NUC as main computer
+    \item The software should be developed in VS2017 C+++ 11 and OpenCV 3.3
+    \item Main operational software will be based on previous software called \say{Butler soul}
+    \item CAN communication should be changed to binary data communication instead of ASCII
+    \item Convert MATLAB Haar Cascade code to C++/OpenCV in VS
+    \item Kinect as vision hardware
+    \item Reuse the Butler Path Controller version 1
+\end{itemize}
+
+\subsubsection{Demonstration}
+When realised, the final demonstration is divided into four cases with different complexities for challenging the system to its full potential.
+
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.5\textwidth]{./Introduction/images/Case1.png}
+    \caption{The figure depicts case 1 which is requested to be completed during this year's iteration of the project. The robot identifies the object on the table, moves towards it, grabs it and, throws it away in the bin.}
+    \label{fig:case1}
+\end{figure}
+
+In Figure \ref{fig:case1} the robot is placed 2.5 metres from the table at start. The butler moves towards the table, identifies the cup, grabs the cup and, disposes of the cup in the trash. There is only known objects on the table in case 1. Case 2 adds complexity through known and unknown items on the table. In case 3 and 4, the robot will get the cup from a human and place it on the table with no objects or foreign objects in the way.
+
+\subsection{Transition Date}
+The transition date is 2017-01-14.
+
+\subsubsection{Resources}
+The data that we have accumulated during the project such as pre-studies, research and, manuals are located on Microsoft Teams. For access ask Mikael Ekström for an invite. The Mälardalens University Robotics Project Github\footnote{\url{https://github.com/ProjectMDH}} will contain the code, which is open source, produced by the project.
+
+% ref github?
+
+\subsection{Requester}
+Mikael Ekström, Mälardalen University, and Volvo CE with representative Torbjörn Martinsson is the requesters for MDH@HOME Butler.
+
+\subsection{Receiver}
+Mälardalen University is the final recipient of the project.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{RoboCup@HOME - Henrik Falk}
+
+This section describes the scope and rules for RoboCup 2017 in connection to the Butler Project. The project aimed to comply with the RoboCup 2018 rules which was published on the RoboCup homepage but has been taken down during later parts of 2017.\\
+\indent RoboCup@HOME has developed further with several branches such as Major and Minor within the competition while keeping the substructure with the different leagues. Please visit the RoboCup at home webpage for more information\footnote{\url{http://www.robocup2018.org/}}.
+
+\subsection{Competition Intentions}
+The contest wants to encourage the innovation, with high relevance, within mobile service robotics and human-robot interaction. One of the main concepts behind the competition is autonomy and mobility and within that scope they use benchmarking tests in a realistic environment. The competition also aims for attractiveness in the eyes of the public. The Robot shall be attractive in a home environment since they want to convey the public the future usage of these types of service robots at home.
+
+\subsection{Scope Of The Competition}
+The competitions scope is, but not limited to:
+\vspace{0.15cm}
+
+\begin{itemize}
+    \item Natural Human-Robot-Interaction and Cooperation
+    \item Navigation and Mapping in a dynamic environment
+    \item Computer Vision and Object Recognition under natural light conditions
+    \item Object Manipulation
+    \item Adaptive Behaviours
+    \item Behaviour Integration
+    \item Ambient Intelligence
+    \item Standardised and System Integration
+\end{itemize}
+\vspace{0.15cm}
+\indent The rulebook states that Natural Human-Robot-Interaction which means that "humans are not allowed directly (remote) control the robot" in any way. So the rule is interpreted as follows "Go and get the cup on the table" is allowed and not "Go forward 1 metre, put arm out, open hand....". With high relevance includes, but not limited to, social relevance. To convince the public how useful service robot applications are. Of course, the competition holds scientific value as well. All scenarios are non-standardised domestic environments and props are available. Also, “the specific tasks must not be solved using open loop control”.\cite{robocup-rulebook}
+
+\subsection{Desired Technical Abilities}\label{techab}
+The contest desire these technical abilities in the robot which is also the focus for the tests:
+\vspace{0.15cm}
+
+\begin{itemize}
+    \item Navigation in dynamic environments
+    \item Fast and easy calibration and setup
+    \item Object Recognition
+    \item Detection and Recognition of Humans
+    \item Natural Human-Robot Interaction
+    \item Speech Recognition
+    \item Gesture Recognition
+    \item Robot Applications (daily life)
+    \item Ambient intelligence
+\end{itemize}
+% \vspace{0.15cm}
+
+\subsection{Qualification}\label{qualification}
+\indent For qualification, the committee wants a video showing at least two of these abilities.
+\vspace{0.15cm}
+\begin{itemize}
+    \item Human-Robot Interaction
+    \item Safe Navigation
+    \item Object Detection and Manipulation
+    \item People Detection
+    \item Speech Recognition
+    \item Speech Synthesis
+\end{itemize}
+% \vspace{0.15cm}
+
+\subsubsection{Additional Qualification Information}
+The rulebook also states the different types of objects, predefined objects, environments, changes that can be made to the environments as well as predefined locations, rooms and names.\\
+ One of the most important parts is the rules concerning appearance and safety of the robot:
+\vspace{0.15cm}
+\begin{itemize}
+    \item \textbf{Cover:} All internal hardware must be covered
+    \item \textbf{Loose Cables:} Are not allowed, everything must be inside the robot
+    \item \textbf{Safety:} No sharp edges or other things that can injure people
+    \item \textbf{Annoyance:} No permanent loud noises or blinding lights
+    \item \textbf{Marks:} No artificial marks or patterns
+    \item \textbf{Driving:} The robot should always be careful when not certain
+\end{itemize}
+
+\subsection{Leagues}
+In the competition there are three different leagues, Domestic Platform League (DPL), Social Standard Platform League (SSPL) and Open Platform League (OPL). The Butler project is aiming to compete in the Open Platform League.\\
+\indent The OPL has no hardware constraints and is aimed for testing the robots design and configuration. The scope is similar to DSPL and has the same modus operandi with focus on Ambient Intelligence, Computer Vision, Object Manipulation, Safe Indoor Navigation and mapping, and Task Planning.\\
+\indent The client of the Butler has specified different tasks that the robot shall be able to do. These are explained in the Volvo Project Description Case 1-4. These tasks aims to run a RoboCafé with human interaction. This is not explicitly expressed in the rulebook as a task. It is assumed that the task Restaurant section 6.3 is the equivalent of RoboCafe.\\
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{MDH@HOME 2017 - Henrik Falk}
+This section describes the initial studies around the platform developed during the previous years' as well as decisions made during this iteration of the project.
+
+\subsection{The Butler at RoboCup@HOME}
+Since the start of the project, the RoboCup@HOME competition has evolved. The initial go and grasp is not a separate competitive task but a part of a bigger scenario. This scenario is called \say{6.3 Restaurant} that incorporates two robots collaborating. The focus of the assignment is ".. online mapping, safe navigation in previously unknown environments, gesture detection, human-robot interaction, and manipulation in a real environment."\cite{robocup-rulebook}. The proposed go and grasp is stated as a subtask 6.3.3.5.2 and thus not applicable without the rest of the scenario. \\
+\indent Therefore, this year the goal is to conduct a quick go and grasp within the University to conform with the requesters cases.
+
+
+\subsection{Current platform, a prestudy}
+This subsection presents a current state of project with the help of former members, requester, and observations.
+
+\subsubsection{The Base}
+One of the requests this year was to convert the wheel controllers ASCII based communication over CAN to binary format. This will increase the speed of the communication to the wheel. In addition to this, the current translator card that converts RS232 communication to CAN, as stated by Torbjörn Martinsson, slows the communication by approximately half. Other concerns have been raised by Jakob Danielsson due to the fragile hardware implemented, pulse width modulation timer problems, and that the embedded controller system is coded in Ada.\\
+\indent There exists a major design flaw with the current base. It cannot cross electrical cables on the floor or go through doors.
+
+\subsubsection{The Arm}
+Due to time constraints, the parts for the arm was ordered early in the project. A problem was discovered, the joints were not stiff enough and this resulted in that the arm was too unstable. There were other problems along the like manufacturing faults that resulted in that feedback for the kinematics drifted. Electrical control difficulties was discovered with the Pulse Width Modulation duty-cycle had an offset of 11 percent before it started to move. They propose in their report that the arm needs a complete redesign to rectify the situation. As of now, the screws need to be tightened on the arm every fifth run.\\
+\indent In the interview with Daniel Jonasson, he explained that the CAN protocol could not fit all the axis within one packet of eight bytes. Their temporary solution was to split it into two which introduced challenges such as joining the two messages. He advised us to not go forward with the current CAN protocol for the arm.
+
+\subsubsection{Additional Observations}
+In addition to the previously stated challenges and problems it has been observed that the Butler, in its current state, is not viable for competition in RoboCup@HOME. The current rule-set states that in the OPL a robot cannot be wider than 0.7 metres\cite{robocup-rulebook}. Currently, the Butler measures 0.8 metres wide at its widest point. This will only increase when finalising it for competition.\\
+\indent In the RoboCup@HOME rules they state that the robot must be attractive in a home and to the public. The Butler is not attractive. Finally, the Kinect has been discontinued by Microsoft and they recommend Intel's RealSense depth cameras\footnote{\url{https://developer.microsoft.com/en-us/windows/kinect/hardware}}. Further development on the platform would not be recommended.
+
+\subsection{A Parallel Approach}
+In light of these interviews and discoveries, this year will yield the development of a completely new platform. The Robotics Operating System (ROS) will serve as the base software of the Robot. As the name suggest, it is for robots and has a large following within research and industry. This allows for a thriving ecosystem of open source minded peers. This project can contribute to that ecosystem.\\
+\indent Since development of a base takes about twenty weeks the Husqvarna Research Platform was selected as the new base. This eliminated the previously stated problem and with this base a 5-DOF design was decided to comply with the attractiveness aspect and ease of access within the users living quarters. \\
+\indent With respect to the previous problems with Intel NUC and CAN, the Jetson TX2 was selected as the main computer for the Butler. The Jetson TX has a CAN-interface on general purpose input/output pins and is well suited for ROS and Vision based applications.\\
+\indent Instead of rewriting the CAN protocol for both parts of the robot and using the flawed hardware, a new intermediary embedded system for actuator control was proposed. A new protocol is to be developed that does not need splitting and the hardware can use the full speed of the CAN bus. \\
+\indent The Kinect being discontinued a new high resolution camera with depth perception is to be selected.
+
+\subsubsection{Objectives}
+The previous sections has led to the following objectives for the Butler project 2017:
+
+\begin{itemize}
+    \item New platform
+        \begin{itemize}
+            \item 5 Degrees Of Freedom with Husqvarna Research Platform as base
+            \item End effector handling weight 0.5 kg
+            \item Robotic Operating System (ROS) based robot
+            \item A design that complies with RoboCup@HOME rules 2017
+        \end{itemize}
+    \item New Hardware
+        \begin{itemize}
+            \item Central Processing Unit
+            \item High Resolution Camera with Depth Perception
+            \item Actuator Control with Intermediary Embedded System
+            \item Complete actuator system
+        \end{itemize}
+    \item Path Planning
+        \begin{itemize}
+            \item Local
+            \item Global
+        \end{itemize}
+    \item Controller Area Network (CAN) Bus
+        \begin{itemize}
+            \item New Flexible Protocol
+            \item Up To Six Actuators Controlled Within One Packet
+        \end{itemize}
+    \item Trajectory Planning
+    \item Object Recognition
+    \item Reuse intelligent gripper
+\end{itemize}
+
+\subsection{Budget}
+
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{lll}
+\hline
+\textbf{Department} & \textbf{Intended Use} & \textbf{SEK} \\ \hline
+    Mechanics      &    Materials       &         5700  \\
+    Electronics      &      Components     &           8700\\
+    AI/Nav/Control      &       Processing Unit    &           3200\\
+    Signal-/Image-processing      &     Camera, Communication      &           2400\\
+\textbf{Total} & \textbf{} & \textbf{20000} \\ \hline
+\end{tabular}
+\caption{The initial estimation of the project budget.}
+\label{table:budget}
+\end{table}
+
+In Table \ref{table:budget} the estimated budget can be viewed, it was initially set to a maximum of 20000 SEK.
+The final spending can be viewed in Appendix \ref{appendix:summary}. The Appendix also discloses the project progression with respect to time registered on the project by the project members.

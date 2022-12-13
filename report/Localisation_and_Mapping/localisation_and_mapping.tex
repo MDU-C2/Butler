@@ -1,0 +1,31 @@
+\section{Localisation and Mapping - Who? (Alexander K, Albin B, Rickard W)}
+\subsection{Map Acquisition}
+\subsection{Map Representation - Albin}
+Albin Billman - This section is the same as in the UNICORN.\\
+\medskip
+
+\noindent
+The robot uses the ROS navigation stack which uses the costmap\_2d package \footnote{\url{https://github.com/ros-planning/navigation}} for creating costmaps. The package makes a costmap that tells the robot where obstacles are which in turn can be used for path planning. The structure of the package is described in a paper by David V. Lu et al.~\cite{lu2014layered}. To create a costmap that is very flexible, the package works in layers such as obstacle, static and inflation layers. These layers are then fused together onto a master layer that is the final output of the costmap. By doing this, the costmap is more flexible since each layer can focus on a different part of the costmap. It is also possible to implement your own layers if necessary.
+
+The layers used in the Charlie are static, range sensor, obstacle and inflation layers, where each layer performs a different function. The static layer is the layer that maps the static environment and can be generated from a SLAM map created before or an architectural map. The range sensor layer \footnote{\url{http://wiki.ros.org/range_sensor_layer}} collects data from range sensors and adds them to the costmap.
+The obstacle layer is by default represented as a voxel grid and as such can map 3D environments. This layer collects data from sensors such as LIDARs and RGB-D cameras and represents them in the voxel grid. The voxel grid is then converted to a 2D costmap and added to the master costmap. For this layer there are all sorts of parameters that can be set per sensor for better customization. The inflation layer inserts a buffer around all obstacles. This is so the robot does not get too close to static or dynamic obstacles such as people.
+
+
+\subsubsection{Global Costmap}
+The global costmap is used for global path planning outside the range of the sensors of the robot. It consists of an obstacle, static and inflation layer. It is created from a previously generated SLAM map.
+
+\subsubsection{Local Costmap}
+The local costmap consists of a static, range sensor, obstacle and inflation layer. It is created using sensor data from the LIDAR, stereo camera and ultrasonic rangefinders. This costmap subscribes to the final filtered point cloud topic, the filtered LIDAR topic and the topics for the outputs of the range sensors.
+
+\subsection{Localisation Algorithm}
+% Rickard Willman, rwn13001
+
+% \medskip
+% \noindent
+% A localisation algorithm is used for estimating the pose of the robot’s reference frame in the world reference frame based on sensor observations. Such an algorithm is necessary because the credibility of the wheel- and visual odometry is not viable for localisation of the robot over time. The odometry drifts (the error increases over time) due to several well-known reasons e.g. differences between the nominal and the actual wheel diameter as well as ground unevenness and wheel slippage. A widely used algorithm for localisation is Monte Carlo Localisation (MCL) which makes use of a particle filter. This algorithm was proposed by Dellaert et al. in \cite{dellaert1999monte}. Given a map of the environment, MCL uses particles to represent the distribution of a robot’s possible states of position and orientation. As the robot moves and observes the environment, the algorithm will predict the new state of the robot and resample the particles based on how well the observations correspond to the predicted state. This should eventually lead to that the particles converges towards the robot’s actual position and orientation.
+
+% In ROS, there is a localisation algorithm called \textit{amcl} which is a version of MCL that instead uses an adaptive particle filter. It adapts the size of the sample sets and thus providing better state estimations while using much less particles. This method is described by Fox in \cite{fox2003adapting}. The \textit{amcl} node takes in the laser scan from the lidar, the map and the transform messages. The output is the transformation \textit{map} $\rightarrow$ \textit{odom}. To estimate the pose of the robot, \textit{amcl} tries to align the laser scan with the map. I this way the transformation \textit{map} $\rightarrow$ \textit{base\_link} can be computed. By looking up the transformation \textit{odom} $\rightarrow$ \textit{base\_link} which is the pose estimate based on the dead reckoning odometry, the transformation \textit{map} $\rightarrow$ \textit{odom} can be calculated as follows:
+% \[ map \rightarrow odom = (odom \rightarrow base\_link) (map \rightarrow base\_link)^{-1} \]
+
+% The transformation \textit{map} $\rightarrow$ \textit{odom} can be thought of as the correction for the odometry drift. It does not longer matter how much the odometry drifts, the robot will always try to correct its pose with the help of \textit{amcl}. Now one might think why using odometry is necessary at all. There are situations where localisation algorithms like \textit{amcl} have drawbacks. In a featureless open spaced environment, \textit{amcl} cannot contribute in the localisation of the robot since there are no features to detect. Also traversing along an open corridor limits the contribution of algorithms like \textit{amcl}. The particles will get distributed along the corridor and thus a precise position cannot be determined. Both of these examples are explained by Grisetti in \cite{grisetti2005improving}.
+

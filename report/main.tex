@@ -1,0 +1,147 @@
+% main.tex
+
+\documentclass[10pt, titlepage, a4paper]{article}
+
+% Packages 
+\usepackage{graphicx}
+\usepackage[export]{adjustbox}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{fancyhdr}
+\usepackage{enumerate}
+\usepackage{listings}
+\usepackage[titletoc,toc]{appendix}
+\usepackage[pdfborder={0 0 0},colorlinks=true, urlcolor=blue, citecolor=red, bookmarks=false]{hyperref}
+\usepackage[margin=3cm]{geometry}
+\usepackage[absolute]{textpos}
+\usepackage[section]{placeins}
+\usepackage{url}
+\usepackage{tabularx}
+% \usepackage{gensymb}
+\usepackage{caption}
+% \usepackage{xltxtra}
+
+
+% for citations
+\usepackage{dirtytalk}
+
+%For Swedish
+\usepackage[utf8]{inputenc}
+
+%For a table /Falk
+\usepackage{graphicx}
+
+%fiddling around with quotes
+\usepackage{csquotes}
+\usepackage{blindtext} % REMOVE LATER
+
+%fiddling with rotation
+\usepackage{adjustbox}
+
+% Page style
+\pagestyle{fancy}
+\marginparsep = 0pt
+
+% Set font
+% \setromanfont{Calibri}
+
+\renewcommand\contentsname{Table of Contents}
+\newcommand{\HRule}{\rule{\linewidth}{0.5mm}}
+	
+\newcommand{\circR}{\textsuperscript{\textregistered}}
+
+% Code style
+\lstset{
+	backgroundcolor=\color[rgb]{0.92,0.92,0.92},
+	basicstyle=\footnotesize,
+	showspaces=false,
+	showstringspaces=false,
+	showtabs=false,
+	tabsize=2,
+	captionpos=b,
+	breaklines=false,
+	keywordstyle=\color[rgb]{0,0,1},
+	commentstyle=\color[rgb]{0.133,0.545,0.133}
+}
+
+\begin{document}
+    \begin{titlepage}
+        % Title
+        \input{./title.tex}
+    \end{titlepage}
+
+    % Page style
+    \thispagestyle{fancy}
+    \fancyhead[R]{The Butler Project}
+    \fancyhead[L]{M\"{a}lardalen University}
+    \renewcommand{\headrulewidth}{0.4pt}
+    \renewcommand{\footrulewidth}{0.4pt}
+
+    % Begin actual text
+
+    % \def\abstract{
+    %     \vfil
+    %     \begin{center}
+    %         {\bfseries\abstractname\vspace{-.5em}}
+    %     \end{center}
+    %     \itshape
+    %     }
+    % \def\endabstract{\par}
+
+    % % ============================= Abstract ==============================
+    % \input{./abstract}
+    % \newpage
+    
+    \input{./acknowledgements}
+    \newpage
+
+    % ======================= Table of contents ===========================
+    \hypersetup{linkcolor=black}
+    \tableofcontents
+    \hypersetup{linkcolor=red}
+    \newpage
+
+    % ============================== Content ==============================
+    
+    \input{./Introduction/introduction}
+    \input{./Mower_Platform/mower_platform}
+    % \input{./Sensors/sensors}
+    % \input{./Power_Distribution_Board/power_distribution_board}
+    \input{./Mechanical_Structure/mechanical_structure}
+    \input{./Electronics/electronics}
+    \input{./Communication/communication}
+    \input{./Development/development}
+    \input{./System_Architecture/system_architecture}
+    \input{./Perceiving_the_Environment/perceiving_the_environment}
+    % \input{./Localisation_and_Mapping/localisation_and_mapping}
+    \input{./Path_Planning/path_planning}
+    \input{./Trajectory_Planning/trajectory_planning}
+    % \input{./Added_Functionalities/added_functionalities}
+    % \input{./Test_Setup/test_setup}
+    % \input{./Test_Results/test_results}
+    % \input{./Discussion/discussion}
+    \input{./Future_Work/future_work}
+    \input{./Conclusion/conclusion}
+
+    % ============================= References ============================
+    \newpage
+    \bibliographystyle{IEEEtran}
+    %%%% TO HAVE MULTIPLE REFERENCE FILES I.E .BIB files THEY NEED TO BE IN THE \bibliography call. IF NOT MULTIPLE "REFERENCES" IN EVERY SECTION IS WANTED THEN THEY CAN BE CALLED IN EACH FILE. BELOW IS AN EXAMPLE HOW IT SHOULD BE DONE.
+    %\bibliography{references,Mower_Platform/lawnmowerreferences,Sensors/sensorreferences}
+    \bibliography{references,Mower_Platform/lawnmowerreferences,Sensors/sensorreferences,Communication/CANreferenser}
+     
+    \addcontentsline{toc}{section}{References}
+
+    % ============================ Appendices =============================
+    \newpage
+    \begin{appendices}
+
+	    \input{./Appendices/appendices1}
+    	\clearpage
+	
+    % 	\input{./Appendices/appendices2}
+    % 	\clearpage
+	
+    \end{appendices}
+
+\end{document}

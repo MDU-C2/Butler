@@ -1,0 +1,70 @@
+\section{Perceiving the Environment}
+\subsection{Vision - Albin Billman}
+% Albin Billman - this section is the same as in the unicorn
+\medskip
+
+\noindent
+The vision is necessary to detect objects that could not be detected by lidar. This is done through providing point clouds to a costmap that maps obstacles for the robot.
+
+\subsubsection{Point Cloud Filtering}
+\noindent
+The ROS package for interfacing with the ZED SDK (zed\_ros\_wrapper)\footnote{\url{https://github.com/stereolabs/zed-ros-wrapper}} is quite slow so to improve performance some optimizations were made for processing point clouds. Since the ROS interface needs to convert the entire point cloud to a ROS data format for processing it is very slow. This was sped up by making a filter for the point cloud conversion. The filter basically skips a specified number of rows and columns in the point cloud. Code has been added so that this can be specified in a launch file. For more information about the implementation see the documentation in the zed\_ros\_wrapper. This solution greatly increased performance when processing the point clouds. 
+
+There is also some point cloud filtering using voxel grids that takes place after the conversion to ROS format. The pcl voxel grid filter is subscribed to the point cloud topic that the zed wrapper outputs and it then outputs another topic that the costmap is subscribed to. This is basically done to remove any points under or over a certain height from the costmap. There is a final third filtering which is the same as the second except it removes all points closer than half a meter to the camera. An implementation of this could probably be made in the ZED ROS interface as a future optimization.
+
+\subsubsection{Visual Odometry}
+\noindent
+The visual odometry from the ZED camera is used for complementing the mechanical odometry from the wheels in cases such as when the wheels slip and the wheel odometry is inaccurate. However the zed camera odometry is not as accurate most of the time and it can get worse if the pictures do not have many landmarks e.g. pictures of white walls.
+
+The visual odometry used is the one that is implemented in the ZED SDK. Some tests were made with the viso2 ROS package \footnote{\url{https://github.com/srv/viso2}} but the results were significantly worse than the ZED implementation and it was discarded in favor of the ZED implementation. 
+
+\subsection{Object Detection/Recognition - Marcus Ventovaara}
+The method for object detection in this paper consists of a state of the art real-time object detection system. It is based on a convolutional neural network for object detection named You Only Look Once (YOLO), developed by J. Redmon and F. Ali \cite{redmon2016yolo9000}. The implementation of it, denoted Darknet\footnote{\url{https://github.com/pjreddie/darknet}}, implemented by J. Redmon \cite{darknet13}, and its wrapper for ROS\footnote{\url{https://github.com/leggedrobotics/darknet_ros}}, is an open source solution for object detection developed in C with support for CUDA acceleration. The implementation features multiple pre-configured and pre-trained networks ranging from efficient to precise configurations. For the purposes of the project in focus, however, a configuration derived from the YOLOv2 configuration was used and trained singularly for detecting coffee-mugs. The initial weights for the convolutional layers were extracted from a pre-trained YOLOv2 extraction model in order to decrease the necessary training time.
+
+The data-set used for the training process totalled 1339 images depicting one or more coffee mug with an accompanying plain-text file for each image detailing a bounding box for each mug in the image. The network was compiled with CUDA acceleration for an increase in speed. The hardware used during training was a desktop computer equipped with a 4 core, 8 thread Intel Xeon E5620 processor and an Nvidia Quadro 4000 graphics card and 12GB of RAM. The operative system of choice was the GNU/Linux distribution Ubuntu 16.04 64-bit and overall the system worked well for the training process, however, limitations were encountered due to the aged hardware. A lack of memory within the Quadro 4000 card resulted in memory corruption with larger batch sizes and subdivisions during training. This was solved by reducing the batch size and subdivisions in the network configuration, it is unknown how this affected the overall training of the network.
+
+\begin{figure}[h!]
+\centering
+\includegraphics[width=0.9\linewidth, height=5cm]{Perceiving_the_Environment/full_plot.png}
+\caption{The convergence of the network during training. The plot features overall and average loss over iterated subdivisions. The green line represents the average loss for each subdivision while the blue is the overall loss.}
+\label{fig:od_training}
+\end{figure}
+
+The process of training the network was executed over the course of approximately three weeks, halting the process once in order to add additional training data. The first 23000 iterated subdivisions used a training set consisting of 257 images\footnote{\url{http://ai.stanford.edu/~asaxena/robotdatacollection/real/mug/}} after which 1082 additional images\footnote{Compressed archives 1 and 5 found at \url{http://rgbd-dataset.cs.washington.edu/dataset/rgbd-dataset_full/}} were added. This can be noticed in the sudden spike in the plot in Figure \ref{fig:od_training} at the horizontal location of 23000.
+
+Somewhat difficult to tell from the aforementioned figure is that the convergence of the average loss continuously decreases towards near-zero, even though the process may seem stagnated. This might have been avoidable --- or rather, the training process might have been faster and more efficient --- if a larger data-set were to have been used both initially and overall. The latter 1083 images further portray two different mugs at different yaw and pitch angles. This, the very small number of unique mugs in the subset in question, likely led to a bias in detection as the resulting network did show bias, especially towards detecting white mugs --- as one of the mugs was of white colour while the other white, red, and grey.
+
+
+\begin{figure}[h!]
+\centering
+\includegraphics[width=0.9\linewidth, keepaspectratio]{Perceiving_the_Environment/rgbdepth.png}
+\caption{Mug detection in RGB stream (left) and the bounding box superimposed onto the depth image (right).}
+\label{fig:od_detect}
+\end{figure}
+
+The overall results of the object detector produced decently precise detections, though further training is considered necessary. 
+In Figure \ref{fig:od_detect}, the visual representation of the object detection is depicted, with the cup at a distance of 83 centimetres. Considering the subset within the bounding box on the depth image, it is logical to assume that it is too irregular to extract a precise depth by random guess or averaging. Therefore, a K-Means clustering algorithm was used to segregate the pixel values into three clusters, from which the mean cluster was chosen as the distance to the cup. A manual tape measurement confirmed the precision of the extracted depth to be of sufficient quality for the purpose of the project described in this paper --- as it only differed with a few centimetres at most.
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.5\linewidth, keepaspectratio]{Perceiving_the_Environment/falsecup.png}
+    \caption{Example of a false-positive detection (left).}
+    \label{fig:od_falsepositive}
+\end{figure}
+
+The results further showed some irregularities in the detection of mugs, mainly in the sense that it produced false-positives near the borders as well as contrasting edges within the image --- such as at the edges of tables.
+Figure \ref{fig:od_falsepositive} depicts just this phenomenon. The reason for the false detection in the image is likely due to the terrible contrasting and colouring produced by the Orbbec Astra Pro camera, as well as the high-contrast change at the table edge in the upper left corner of the bounding box. These can mostly be filtered out as testing showed the false-positives to generally be more rectangular and often much larger than the successful detections --- in terms of bounding boxes, that is.
+
+Further limitations with the camera is its depth map which only produces accurate measurements at an approximate distance of 60 centimetres and above. Combined with the low resolution and the small size of the mugs --- which effectively nets a short maximum distance for detecting mugs of approximately 1 metre --- resulted in a very limited range for accurately detecting mugs between about 60 and 100 centimetres.
+
+The fluorescent lighting in the testing environment was shown to play a somewhat major part in the bad colour produced by the Astra, though it did not sufficiently explain it. Therefore, to the extent that future work is concerned, some colour-correction will be attempted. Regarding future work, the data-set will also be increased and additional colours of mugs included. It would be preferable to produce a data-set using the Astra camera in order to normalise the environment --- in terms of resolution and colour --- in which the images are produced. This would be beneficial to increase the accuracy of the detector when using the Astra camera. Further, the data-set will include mugs at a range of distances in order to attempt an increase in maximum distance of detection however, the systems implementation is scale-invariant and therefore, such an attempt will not be expected to yield any significant difference. 
+
+% \subsection{Laser Scan - Alexander K}
+% Alexander Karlsson, akn13013
+
+% \medskip
+% \noindent
+% A ROS driver provided by clearpathrobotics\footnote{\url{https://github.com/clearpathrobotics/LMS1xx}} reads the sensor data from the Lidar using a socket and constructs a message that is published on the network. The message is part of the ROS standard and contains a timestamp, points, intensities, in addition to limits of the data regarding angle and range. 
+% \subsubsection{Laser Scan Filtering}
+% Because the Lidar has an aperture angle of 270$^{\circ}$ the scan would catch parts of the agent in the final design, thus a filter was written in ROS. This node subscribes to the message published by the ROS driver --- filters out points outside a user defined range of angles and publishes it to be used by other nodes in the system.
+% \subsection{Close Range Sensing} 

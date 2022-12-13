@@ -1,0 +1,94 @@
+\section{Mower Platform - Billy Lindgren}
+\noindent
+The platform is orginally an automatic lawnmower from Husqvarna. The model is a 430x and the particular model as shown in figure \ref{Husqvarnamower}. The mower is also loaded with custom software to enable ROS on the platform.
+In this section, the lawnmower platform will be introduced. In \ref{lawnmowerPerformance} the performance and functionality of the mower are presented and \ref{lawnmowerConnect} describes how to connect to the mower. \ref{lawnmowerProsandCons} points out the pros and cons of using this platform instead of building a new one. What still needs to be changed with the platform and what is still to be done is mentioned in \ref{lawnmowerFuture}. \ref{lawnmowerDiscussion} wraps up this section with discussion and conclusions on the platform.
+
+\begin{figure}
+  \caption{Husqvarna Automower 430x}
+  \centering
+ \includegraphics[width=10cm,height=10cm,keepaspectratio]{Mower_Platform/Husqvarna2.png}\label{Husqvarnamower}
+\end{figure}
+ 
+ 
+\subsection{Performance}\label{lawnmowerPerformance}
+\noindent
+The mower is capable to keep a lawn with the max area at 3200 $m^{2}$ in trim which makes it a very good starter platform since it is built for outdoor use and can run a long time before it needs to be recharged \cite{Husqvarnalawnmower}.
+ 
+To charge the mower, a charger is included in the kit with the mower and it is used in the project as a temporary solution to charge the batteries in a correct way. The recharging time for the battery is usually around 65 minutes.
+ 
+ 
+\subsection{Single Board Computer}\label{lawnmowerConnect}
+\noindent
+In order to access the mower's single board computer to run the motors and be able to gather sensor data, a connection has to be made between the main computer and the mower. The mower has 2 connections that are available. Either connect the main computer to a USB-b port at the bottom or there is a possibility to connect on the inside of the mower, but a board to wire connector needs to be bought and soldered on the mower computer and connect via UART. The two different ways of connecting the will show up different ways on the main computer, either it will appear as a USB device or as a computer e.g. like an Arduino.
+
+
+\subsection{Pros and Cons}\label{lawnmowerProsandCons}
+\noindent
+In the following sections the pros and cons of using the Husqvarna mower as a base platform instead of building a platform.
+
+
+\subsubsection{Pros}
+\noindent
+The platform is a commercial product and if parts break, they are easy to replace and it is a well tested since it is a product on the market.
+
+Plug-and-play: with ROS enable on the mower plug in a computer and run it. It decreases the development time greatly due to the facts that the motors and the encoders are ready to be used. 
+
+Time-saving, due to that mechanics and electronics are already designed and manufactured and only the extra parts need to be designed instead of the entire robot.
+
+
+
+\subsubsection{Cons}
+\noindent
+The system is not completely open, because the Husqvarna software on it thus some limitations are bound to be. One is that the stop button and the display cannot be removed since the computer in the mower cannot function without, thus some design ideas might suffer from the fact that the display needs to be there.
+
+Collision sensors that are integrated into the mower need to be modified when the outermost chassis is taken away, otherwise the mower will not be able to run due to the Husqvarna design.
+
+The platform might be too weak to support all the features that are to be added.
+
+
+\subsection{Future work}\label{lawnmowerFuture}
+\noindent
+
+When the platform is charging, it prevents the ROS code to start the motors and leave the charging platform on its own. This is integrated into the single board computer inside the mower and it is not possible at the moment to remove this feature. However, this needs to be solved in order for the platform to be usable in later stages of the project when the system is integrated into the test environment in the future.
+
+
+
+\subsection{Discussion and Conclusion}\label{lawnmowerDiscussion}
+\noindent
+ 
+When looking at the pros and cons of using an existing well-tested platform instead of designing and building a new one. Some aspects that are to be taken into consideration is the limitations of the bought platform contra the time and money it takes to manufacture a new base platform.
+
+With the aspects in mind, it was decided to go with the existing platform because the changes that are to be made on the platform will take far less time than building a completely new one. With the time aspects, when the project will only be ongoing for 20 weeks, it was decided to use the existing platform in order to get a quicker and more stable result. 
+
+
+
+
+
+ 
+ 
+ 
+% The platform that is being used is an autonomous lawnmower from Husqvarna. The particular model is the Husqvarna 430x as showned in figure \ref{Husqvarnamower}. 
+
+% The lawnmower is capable to keep a lawn with the max area at 3200 $m^{2}$ in trim which makes it a very good starter platform since it is build for outdoor use and can run a long time before it needs to be recharged. It was decided to use this platform instead of building our own since Husqvarna is a part of the project and to save time in the manufacturing process. If a already defined platforms is used then changes can be made instead in order to save time and money.
+
+% To charge the mower, a charger is included in the kit with the mower and it is used in the project as a temporary solution to charge the batteries in a correct way. The recharging time for the battery is usually around 65 minutes.
+
+% \begin{figure}
+%   \caption{Husqvarna Automower 430x}
+%   \centering
+%     \includegraphics[width=10cm,height=10cm,keepaspectratio]{Project/02.Mower_Platform/Husqvarna2.png}\label{Husqvarnamower}
+% \end{figure}
+
+
+
+% \subsection{Single Board Computer}
+
+% In order to access the mower's single board computer to run the motors and be able to gather sensor data a connection has to be made between the main computer and the mower. The mower has 2 connections that are available. Either connect the main computer to a USB-b port at the bottom or their is a possibility to connect on the inside of the mower, but a board to wire connector needs to be bought and soldered on the mower computer and connect via UART. The two different ways of connecting the will show up different ways on the main computer, either it will appear as an USB device or as an computer e.g. like an Arduino.
+
+% FIXA BILDER PÅ INSIDAN OM NÖDVÄNDIGT.
+
+% \subsection{Wheel Odometry}
+
+% Wheel odometry is one fused sensor data that can be acquired from the mower. It is when the position of the robot is calculated with the help of knowing how many turns the motors have spun. If no slippage occurs then the wheel odometry is very reliable and by testing, the results shown that the error that occurs is smaller than 1 cm in an indoor environment.
+
+% If slippage occurs no reliability can be guarantied with this odometry.

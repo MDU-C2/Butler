@@ -1,0 +1,58 @@
+\section{System Architecture - Niclas Holmqvist, Rickard Willman}
+% copy base architecture from unicorn and add your own for the arm, talk to Falk.
+% \subsection{About ROS} moved to 'Developement and Simulation Tools'
+Parts of this section has been copied from the report for the UNICORN project.\\
+\indent An  overview  of  the  system  is  illustrated  in  figure  \ref{fig:system_overview}.   The  whole  system  is  powered  by  two  18V
+lithium ion batteries.  One battery powers the base controller and the wheels integrated into the
+mover platform.  The other one powers the Power Distribution Board which in turn distributes
+the power of the desired voltage to the lidar,  the ultrasonic sensors,  the main computer Jetson
+TX2 and its interlinked USB hub.  Both the ZED Stereo Camera and the computation unit for
+the Ultrasonic Sensor System is indirectly also powered by this battery via the USB hub.  Most of
+the communication between the system units are done using USB because of its simplicity.  The
+externally powered USB hub has four ports whereof three are currently in use.  The USB connects
+the Base Controller, the ZED Stereo Camera and the Ultrasonic Sensor System to the Jetson TX2.
+The  Base  Controller  sends wheel odometry  data  to Jetson  and  receives  velocity  command  data
+for steering of the wheels.  The ZED Stereo Camera provides the video feed from both cameras
+to Jetson which in turn performs the image processing.  The Ultrasonic Sensor System consists of
+the sensors themselves as well as an Arduino Uno which performs some calculations and forwards
+it to the Jetson.  The intercommunication of the Arduino Uno and the ultrasonic transducers are
+done using an I2C bus. The Jetson sends commands to the MCU in the form of pulses and micro-pulses. Pulses are described in more detail in section \ref{motorcancontrol} and the communication is done through CAN.
+\begin{figure}
+  \includegraphics[width=\textwidth]{System_Architecture/system_overview2.png}
+  \caption{System Overview.}
+  \label{fig:system_overview}
+\end{figure}
+
+\subsection{Data Flow}
+%%%%%%%Copypaste
+The data flow chart seen in Figure \ref{fig:data_flow} consists of the nodes and their topic connections. The data flow chart have been slightly simplified by removing inter-stages between the nodes for a better visualisation.
+There are three different sensors on the robot which generates measurement data, LIDAR, ZED and the Ultrasonic Range Sensors. The data from the LIDAR and ZED is sent through different filters before being forwarded to the system's main node \textit{move\_base}. The \textit{move\_base} node handles the map input and all the measurements from the sensors to calculate a path to the desired goal. It also provides the Base Controller with velocities for the wheels of the robot. Again, the actual implementation of how these nodes are connected is a bit more complex. The tf topic is also of great importance. It keeps track of everything from the static transformations between sensors and the robot to the constantly changing reference frames of the robots position in the environment. Another node worth mentioning is the amcl node which is used for localisation of the robot. It constantly provides the tf topic with updated information about the robots position.\\
+%%%%%%%%%%%%%%%%%
+\begin{figure}
+  \includegraphics[width=\textwidth]{System_Architecture/datafloow.png}
+  \caption{Data Flow.}
+  \label{fig:data_flow}
+\end{figure}
+\indent A basic representation of the data flow amongst topics in the MoveIt software which controls the arm of the Butler robot is shown in figure \ref{moveit_flowchart}. The flow chart has been simplified by removing some nodes to give the reader an easier to understand overall view of the system. A more in detail description of the MoveIt software implementation is described in section Trajectory Planning. The MoveIt software package utilises a ROS-package to interface with hardware in the hardware interface node. The trajectory message produced is translated before being sent over CAN. The trajectory message joint space values are translated into ticks and micro ticks for the motor controller to use. Utilising the time stamps available in the trajectory message is overlooked with the current implementation and so it has not been successfully tested. MoveIt is run on the Jetson TX2 and uses I/O pins to communicate over CAN.
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=1\textwidth]{System_Architecture/butler_moveit.jpg}
+\caption{A simplified flowchart of the data flow in the MoveIt package}
+\label{moveit_flowchart}
+\end{figure}
+
+\subsection{Coordinate Frames - Rickard Willman}
+Taken from UNICORN project report.
+\medskip
+
+\noindent
+The robot uses the ROS standard coordinate frames for keeping track of the robot in the environment. The coordinate frames described in REP105 \footnote{\url{http://www.ros.org/reps/rep-0105.html}} are \textit{base\_link}, \textit{odom}, \textit{map} and \textit{earth}. The last one mentioned is not used in this project.
+
+\subsubsection{base\_link}
+The \textit{base\_link} reference frame is rigidly attached to the mover platform in the center of the front wheelbase. All sensors  mounted onto the robot and their respective reference frames are linked through the \textit{base\_link} in order to know their position and orientation in the world. The \textit{base\_link} coordinate frame is the representation of the robot in the world reference frame.
+
+\subsubsection{odom}
+The \textit{odom} reference frame is a fixed world reference frame. However, since the pose of a moving robot in the \textit{odom} reference frame is based on odometry data, it will inevitably drift over time. This makes the \textit{odom} frame insufficient for keeping track of the robots' pose over a longer time. The trajectory of the robot tough will always be continuous which makes the \textit{odom} frame useful as a short-term local reference.
+
+\subsubsection{map}
+The \textit{map} reference frame is also a fixed world frame. The \textit{map} frame relatively to the \textit{base\_link} frame should not drift over time though the trajectory of the robot may not be continuous. Not continuous means that the pose of the robot can make discrete jumps. The characteristics of the \textit{map} frame makes it a good long-term reference for global positioning of the robot but a poor reference for short-term local actions due to the potential discrete jumps at any time.

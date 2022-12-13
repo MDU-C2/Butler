@@ -1,0 +1,121 @@
+\section{CAN communication - Giancarlo Kuosmanen}
+Controller Area Network (CAN) is a serial communication protocol. The CAN protocol supports real-time controls with a high level of security. Some of the main areas of application that CAN extends to are high-speed networks to low cost multiplex wiring. It simplifies electrical wiring systems and reduces faults greatly, as demonstrated by the author Robert Bosch\cite{bosch}. CAN high-speed reaches speeds of up to 1 Mbit/s, while low speed goes from 125kbit/s which is the downside of low-speed, but the upside is that it contains a fault-tolerant system. It is fault-tolerant in the sense that, if the signal gets cut in one wire or shorted to ground, it can still continue to process messages\cite{Kvaser}.
+CAN is defined by the ISO standard (11898), mentioned in e.g Bosch\cite{bosch}. Already mentioned protocols are high-speed CAN (11898-2) and low-speed CAN (11898-3). CAN follows the Open System Interconnect (OSI)\footnote{\url{http://www.axiomatic.com/whatiscan.pdf}} model of computer communication architecture that is subdivided into different layers:
+
+\begin{itemize}
+    \item Transfer layer and object layer handles all the functionality of the data link layer. Finding which message is going to be transmitted, received messages and message prioritisation. It also provides the interface on the message structure.
+    \item Physical layer is the actual transfer between different CAN nodes connected to NUC (bare bone PC) or PC and embedded systems, varies depending on the system and CAN transceivers are a part of the physical layer, detailed in the CAN transceiver section, i.e \ref{CANtransceiver}.
+\end{itemize}
+
+The card that was used in this project is Texas Instruments TM4C123GXL, with its specifications mentioned in section  \ref{CortexM4}, paired up with the Texas Instruments TM4C123GH6PM \cite{TexasInstruments} controller. It conforms to CAN protocol versions 2.0A and 2.0B. Version 2.0A has a 11 bit-identifier (Standard CAN) and 2.0B has a 29 bit-identifier (Extended CAN) headers and Transfer rates up to 1 MBit/s \cite{TexasInstruments}. The header gives the possibility to transmit messages with different identifiers, this way its easier to control, and enables the ability to prioritise the messages.\newline  With a high bandwidth and low message count in addition to low number of nodes connected to the system. Protocol 2.0A will do with its 11 bit-identifier. The TM4C123GH6PM controller has a CAN protocol controller that uses message objects. The message object holds the current information, status and data of the transferred message. It has a set of 32 memory blocks for both transmitting and receiving messages. It further provides the ability to send with 32 different ID's.\newline
+\indent In this project, the high-speed CAN was selected due to the ability of for sending messages in short amounts of time. The 2.0A header was selected due to few nodes connected to the CAN bus also, the utilisation of the 11-bit identifier is plenty sufficient for the intended task. CAN and its features with message identifiers make the system more versatile in a way that if the system needs to be expanded, by adding another MCU (Micro Controller Unit), no radical change has to be made, though the receiving end must be adjusted to fit the new id admission.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{Test Scenarios} 
+The testing phase was divided into three parts. \newline
+\begin{itemize}
+    \item First part: Shows how the circuitry was made and which components are needed for a successful CAN communication.
+    \item Second part: Kvaser Leaf Light HS cable\footnote{\url{https://www.kvaser.com/product/kvaser-leaf-light-hs/}} substitutes a TM4C123GXL card for sniffing purposes and sending specific CAN messages.
+    \item Concluding phase: Replaces the PC to Jetson and is connected to a MCU.
+\end{itemize}
+\subsubsection{Scenario 1}
+
+The goal was to enable the CAN communication between the two cards. A simple transmitting and receiving program was implemented. For it to work completely, two CAN transceivers were needed, paired up with two \(120\Omega\) resistors, as depicted in figure~\ref{fig:CANcom}. Transceivers are needed for the physical layer if it is to work. The MCUs have on-board CAN controllers. The CAN bus operates with a TTL (Transistor-Transistor Logic), 5 volt as high and 0 volt as low. This logic does not generate the needed differential signal(CAN-High and CAN-Low) for the CAN bus. Therefore, transceivers are included. The two resistors placed at the end of the bus are tasked with removing signal reflection and ensure that the bus gets the correct voltage levels. With this setup, the communication worked as intended. By using a terminal program, the UART from the card could print out its values and progress on the command window which Hercules\footnote{Terminal program specifically for hardware} engendered, shown in figure~\ref{fig:Hercules}.
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.75\textwidth]{Communication/CANoverlay.png}
+\caption{Electrical circuit for the CAN communication between two TM4C123GXL cards.}
+\label{fig:CANcom}
+\end{figure}
+%%%%%%%%%%%%%%%%%%%%
+\begin{figure}[!ht]
+\centering
+\includegraphics[scale=0.35]{Communication/Hercules.png}
+\caption{Hercules software.}
+\label{fig:Hercules}
+\end{figure}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{Scenario 2}
+
+In this scenario a TM4C123GXL card was replaced with a Kvaser Leaf Light HS cable shown in figure \ref{fig:KvaserToMCU}, paired up with the software CANKing\footnote{\url{https://www.kvaser.com/canking/}}. The Kvaser Leaf Light HS cable uses a standard 9-pin D-Sub Connector (RS-232) shown in figure \ref{fig:KvaserLeafPinHead}. CANKing makes it possible to send specific data in each message. It controls the interface of the CAN and gives an overview with the output window. The output window shows received and transceived messages. It also shows what kind of data they contain. CANKing is the pseudo replacement for Jetson. If this system works as intended then it should work with Jetson.\newline
+\indent During the development and testing of this period of time a successful system was produced. The controller for the motors worked and so did the CAN communication.
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.5\textwidth, keepaspectratio]{Communication/KvaserToMCU.png}
+\caption{Replaced one TM4C123GXL card for Kvaser Leaf Light HS cable. Remove one transceiver (MCP2551) and couple the Kvaser CANH and CANL to the pins onto the MCP2551 CANH and CANL. Kvaser pinout shown in figure~\ref{fig:KvaserLeafPinHead}}
+\label{fig:KvaserToMCU}
+\end{figure}
+%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.25\textwidth]{Communication/KvaserLeafPinHead.png}
+\caption{Shows the pinouts for the Kvaser RS-232. The most important pins are CANH and CANL. Picture available at: \url{http://www.kvaser.com/software/7330130980146/V1_2_189/kvaser_leaf_light_v2_usersguide.pdf}.}
+\label{fig:KvaserLeafPinHead}
+\end{figure}
+%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{Scenario 3} 
+The PC was replaced by a Jetson, shown in figure \ref{fig:FinalStage}. \newline 
+When sniffing (debugging) with the Kvaser cable and CANKing, messages were being transmitted and received. Instead of correct CAN messages, the receiver received Error Frames. Error frames indicate that the communication is operating but with corrupt messages. This may occur when the system does not have the correct speed at both ends. Adjusting the speed of the messages in Jetson was an intricate task.  \newline
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.25\textwidth]{Communication/FinalStage.png}
+\caption{Communication between Jetson TX2 and TM4C123GXL}
+\label{fig:FinalStage}
+\end{figure}
+% \newpage
+%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Motor control - Alexander Karlsson \& Giancarlo Kuosmanen}
+\label{motorcancontrol}
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.65\textwidth]{Communication/Motor_Control.png}
+\caption{Motor control flowchart.}
+\label{fig:Motor_Control}
+\end{figure}
+Three stepper motors are controlled by a single interrupt (triggered by a timer). The position of stepper motors are known from the amount of pulses generated and the position of DC motor is computed using an encoder. Tasks are created with FreeRTOS\footnote{\url{https://www.freertos.org/}} for the receiver, transceiver, stepper control, and dc control (PID). The transceiver task is called when motors are done generating the pulses requested by the Jetson and then suspends itself (by looking at the number of messages in the transceivers' message queue). The message queue is used in the stepper control task to handle one command at a time (also waits for the transceiver task to complete).
+\newline
+\indent Stepper motors are controlled by the bytes\footnote{One byte represents 255 in decimal form} in the CAN message, two dedicated bytes for each motor, can be seen in figure \ref{fig:CANKingMessage}. DC motor only needs one byte. First byte is for pulses, 1.8 degree steps, also controls the direction of the motor. The  second byte is for micro-stepping, in increments of 1.8/16 degrees and 1.8/32. %Inserting CANKing picture here soon!
+A value of 100 stops the motor, below 100 makes the motor rotate CCW (Counter clock wise) and values over 100 makes the motor rotate CW(Clock-wise). Utilising 100 as the indicator of controlling the direction. \newline \indent Each stepper motor has its micro-stepping driver, mentioned in Section \ref{MotorController}, which restricts the use of the motor. Generation of PWM (Pulse Width Modulation) signals from MCU had its limitations with the drivers.\newline \indent The two smaller (M2 and M5) stepper motors in Section \ref{MotorsNGearboxes} had their drivers set on 16 micro-steps and a PWM which has a frequency of 20kHZ . The larger (M1, mentioned in Section \ref{MotorsNGearboxes}) stepper motor had its driver set on 32 micro-steps and a PWM of 20kHZ. Frequencies above 20kHZ made the motor to stop functioning properly. For the smaller ones, a PWM above 30kHZ caused problems and the motor could not rotate. \newline 
+\indent Boundaries found were from examining and testing each stepper motor. The reason for these limitations remains unclear. The DC motor(M4) has its own driver which demands a 20kHZ PWM signal, no problems were encountered with the DC driver nor with the motor.  
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.65\textwidth]{Communication/CANKingMessage.png}
+\caption{CANKing message structure. How the bytes are divided among the motors. Data byte field enables the byte field.}
+\label{fig:CANKingMessage}
+\end{figure}
+\subsection{CAN and ROS communication - Albin B}
+%abn1213\\
+Communication between ROS and the motors was done using CAN. Several packages were used to do this, the main one being ros\_control which handles when and what to communicate to the motors. The second package is called ros\_canopen which handles transferring messages to the motors using the CAN bus. The message structure for each message consists of 8 bytes of data and a message ID. The message ID is currently irrelevant since there is only one type of message that can be sent. The 8 data bytes are divided into 4 different parts, one for each motor and each part contains values for ticks and micro ticks which is how many degrees we want the motor to move.
+
+Ticks range from 0-200 and each tick is 360/200=1,8 degrees where 100 is zero degrees and anything below 100 is negative degrees. So if we send 99 ticks we want the motor to move -1,8 degrees and 101 is +1,8 degrees. So the maximum range of movement that the CAN message can communicate to the motors is -180 to 180 degrees. Micro ticks are for finer adjustments, one micro tick is tick(1,8)/32=0.05625 degrees. The values for micro ticks in the CAN message ranges from 0-32. Micro ticks are always added to degrees meaning micro ticks can't be negative. So if ticks are 98=-1,8*2=-3,6 and micro ticks are 16 0.05625*16=1,8/2=0,9 then we are telling the motor to move negative 3,6 degrees and then add the micro ticks onto that so the final result would be -2,7 degrees. For positive ticks it would be 102=1,8*2=3,6 and then you add the 16 micro ticks 3,6+0.05625*16=4,5 degrees.
+
+The ros\_control package has sparse documentation but the ros\_control\_boilerplate package helped greatly for implementation and our code for CAN communication was added to this package. There is currently only an implementation for writing to the CAN bus and no implementation for reading from the CAN bus which would have to be done if the motors are to give feedback to the ros\_control package. See the documentation for more details on how the code works.
+
+\begin{table}[!ht]
+\centering
+\caption{CAN message data structure}
+\label{my-label}
+\begin{tabular}{|c|c|c|c|c|c|c|c|}
+\hline
+\multicolumn{2}{|c|}{Motor 1} & \multicolumn{2}{c|}{Motor 2} & \multicolumn{2}{c|}{Motor 3} & \multicolumn{2}{c|}{Motor 4} \\ \hline
+Ticks       & Micro ticks      & Ticks      & Micro ticks      & Ticks      & Micro ticks      & Ticks      & Micro ticks      \\ \hline
+\end{tabular}
+\end{table}
+
+
+
+\subsection{Future Work} 
+The PID-controller for the DC motor works as intended but recently discovered that if there is a burst of messages, the PID controller gets unstable. It works when the messages come within $~$0.2 sec gaps. It has something to do with the calculation not having enough time to finish before the next message arrives so an if-statement can secure the issue.\newline After the motors have finished its task, the MCU sends back a statement to the Jetson containing the current position of the stepper motors but not for the DC motor. Including the DC motor into the message interface could be necessary but since the ROS controller in the Jetson does not take the DC into consideration, it provides pulses which is not optimal. The DC motor wants longer distances to move otherwise the PI-controller will create unnecessary overshoots at times, this part could be developed further. To recap it short and concise.
+\begin{itemize}
+  \item Include the DC motor into the CAN message on the transceiving end of the TM4C123GXL card.
+  \item Improve the collaboration between Jetson and the MCU. Avoid sending pulses and micro-pulses to the DC engine due to the PI-controller and its overshoot problems. Rather give it a smaller distance for it to move. 
+  \item Optional - Bit-shifting could be a better solution instead of using whole bytes, makes the system more versatile. Enables more options and properties, control the speed, pulses, acceleration and direction. At the moment the system only manages to control direction and pulses.
+  \item The CAN data field has 8 bytes in total, only 7 bytes are being utilised. 1 byte remains and can be used for any given motor. 
+\end{itemize}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%\subsection{Requirement}   %Requirements is included in the design of the circuit as well as the testing part.
+%\subsection{Overview}      %A brief overview will be given when explanations of the scenarios are given.
+%\subsection{Design}        %Will include pictures on the circuitry - Could also show the ultiboard design for the break out card?
+%\subsection{Implementation}%Implementation will be given in the motor controller. 
+
